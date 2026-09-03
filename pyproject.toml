@@ -1,0 +1,31 @@
+[project]
+name = "stringency-singlecell"
+version = "0.0.1"
+description = "stringency domain plugin for single-cell and spatial analysis (skeleton; filled by the app-1 design sessions)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = ["stringency>=0.1.0.dev0", "pydantic>=2.7", "pyyaml>=6.0"]
+
+[project.entry-points."stringency.plugins"]
+singlecell = "stringency_singlecell:PLUGIN"
+
+[dependency-groups]
+dev = ["pytest>=8.2", "ruff>=0.5", "mypy>=1.10"]
+
+[tool.uv.sources]
+stringency = { git = "https://github.com/santangelo-lab/stringency" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stringency_singlecell"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
