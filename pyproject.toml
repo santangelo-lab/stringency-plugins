@@ -5,7 +5,7 @@ description = "stringency domain plugin for single-cell and spatial analysis (sk
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-dependencies = ["stringency>=0.1.0.dev0", "pydantic>=2.7", "pyyaml>=6.0"]
+dependencies = ["stringency>=0.1.0", "pydantic>=2.7", "pyyaml>=6.0"]
 
 [project.entry-points."stringency.plugins"]
 singlecell = "stringency_singlecell:PLUGIN"
