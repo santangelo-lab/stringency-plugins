@@ -1,4 +1,10 @@
-"""stringency-singlecell: domain plugin skeleton for single-cell and spatial analysis."""
+"""stringency-singlecell: domain plugin for single-cell and spatial (Xenium) analysis.
+
+Object types: `xenium_bundle` (a region bundle), `punch_coordinates` (the hand-drawn selections),
+`tma_layout` (the transcribed TMA map), `punch_bundle_set` (one bundle per punch after the
+split), `qc_object_set` (QC'd objects plus `qc_summary.json`), and `anndata` (any later object).
+Operations `split_punches` and `qc_cells` are typed; the later ones are provisional.
+"""
 
 from __future__ import annotations
 
@@ -8,21 +14,52 @@ import yaml
 from stringency.plugins import ObjectType, Operation, Plugin, Tool
 
 from stringency_singlecell import phrasing
-from stringency_singlecell.schemas import DESIGN_SCHEMA, OPERATIONS
+from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.0.1"
+VERSION = "0.1.0"
 _HERE = Path(__file__).parent
+_TOOLS = _HERE / "tools"
 
 
 def _load_vocabularies() -> dict[str, tuple[str, ...]]:
     out: dict[str, tuple[str, ...]] = {}
     for f in sorted((_HERE / "vocabularies").glob("*.yml")):
         data = yaml.safe_load(f.read_text()) or {}
-        name, version, labels = data.get("name", f.stem), data.get("version", "0"), data.get("labels", [])
+        name, version, labels = (
+            data.get("name", f.stem),
+            data.get("version", "0"),
+            data.get("labels", []),
+        )
         out[f"{name}@{version}"] = tuple(str(x) for x in labels)
     return out
 
+
+def _ot(name: str, extractor: str) -> ObjectType:
+    return ObjectType(name=name, extractor=extractor, extractor_id=f"sc.{name}@1")
+
+
+OBJECT_TYPES = {
+    "xenium_bundle": _ot("xenium_bundle", "extract_xenium_bundle"),
+    "punch_coordinates": _ot("punch_coordinates", "extract_punch_coordinates"),
+    "tma_layout": _ot("tma_layout", "extract_tma_layout"),
+    "punch_bundle_set": _ot("punch_bundle_set", "extract_punch_bundle_set"),
+    "qc_object_set": _ot("qc_object_set", "extract_qc_object_set"),
+    "anndata": _ot("anndata", "extract_anndata"),
+}
+
+TOOLS = {
+    name: Tool(name, _TOOLS / f"{name}.py", env=None)
+    for name in (
+        "extract_xenium_bundle",
+        "extract_punch_coordinates",
+        "extract_tma_layout",
+        "extract_punch_bundle_set",
+        "extract_qc_object_set",
+        "extract_anndata",
+        "combine_coordinates",
+    )
+}
 
 PLUGIN = Plugin(
     name=NAME,
@@ -30,15 +67,12 @@ PLUGIN = Plugin(
     modes=("pipeline",),
     predicates_module="stringency_singlecell.predicates",
     operations={k: Operation(name=k, params_schema=v) for k, v in OPERATIONS.items()},
-    object_types={
-        "anndata": ObjectType(name="anndata", extractor="extract_anndata", extractor_id="sc.anndata@1"),
-    },
+    object_types=OBJECT_TYPES,
     design_schema=DESIGN_SCHEMA,
-    objective_questions=("differential_expression", "niche_characterisation", "interaction_inference"),
+    objective_questions=OBJECTIVE_QUESTIONS,
     vocabularies=_load_vocabularies(),
-    tools={
-        "extract_anndata": Tool("extract_anndata", _HERE / "tools" / "extract_anndata.py", env=None),
-    },
+    tools=TOOLS,
+    defaults=DEFAULTS,
     describe=phrasing.describe,
     echo=phrasing.echo,
 )

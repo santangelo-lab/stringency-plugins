@@ -28,7 +28,9 @@ def counts_per_group(obs, design):  # type: ignore[no-untyped-def]
             per_unit = {}
             for uname, ucol in units.items():
                 if uname == "observation" or ucol not in obs.columns:
-                    per_unit[ucol if uname != "observation" else uname] = int(mask.sum()) if uname == "observation" else 0
+                    per_unit[ucol if uname != "observation" else uname] = (
+                        int(mask.sum()) if uname == "observation" else 0
+                    )
                 else:
                     per_unit[ucol] = int(obs.loc[mask, ucol].nunique())
             per_unit.setdefault(units.get("observation", "observation"), int(mask.sum()))

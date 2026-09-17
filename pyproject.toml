@@ -15,7 +15,14 @@ stringency = { git = "https://github.com/santangelo-lab/stringency" }
 stringency-singlecell = { workspace = true }
 
 [dependency-groups]
-dev = ["pytest>=8.2", "ruff>=0.5", "mypy>=1.10", "stringency-singlecell"]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "stringency-singlecell",
+    "pyarrow>=25.0.1",
+    "h5py>=3.16.0",
+]
 
 [tool.ruff]
 line-length = 100
