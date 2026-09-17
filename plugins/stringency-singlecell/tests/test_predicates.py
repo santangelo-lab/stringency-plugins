@@ -145,6 +145,24 @@ def test_coords_missing_polygon_not_in_layout_is_a_mislabel() -> None:
     assert v.evidence["layout_without_polygon"] == ["48-2-Liver"]
 
 
+def test_coords_missing_passes_with_other_regions_polygons() -> None:
+    """The coordinates directory holds every punch of every region (42 files on 2026-09-17);
+    polygons that the layout assigns to other regions are expected, not a mislabel. This is the
+    case that blocked the first real run."""
+    from tests.helpers import layout_summary, obj
+
+    regions = {"0076570/Liver": LIVER_0076570, "0076570/Spleen": ["24-2-Spleen-A", "48-1-Spleen-A"]}
+    inputs = _inputs(GOOD_COORDS + [punch("24-2-Spleen-A"), punch("48-1-Spleen-A")])
+    inputs["layout"] = obj("tma_layout", layout_summary(regions))
+    v = registry.get("spatial.coords_missing").fn(ctx("split_punches", inputs))  # type: ignore[union-attr]
+    assert not v.fired and v.evidence["n_polygons_for_other_regions"] == 2
+    # a polygon on no region at all still fires
+    inputs = _inputs(GOOD_COORDS + [punch("21-1-Spleen-A")])
+    inputs["layout"] = obj("tma_layout", layout_summary(regions))
+    v = registry.get("spatial.coords_missing").fn(ctx("split_punches", inputs))  # type: ignore[union-attr]
+    assert v.fired and v.evidence["polygon_not_in_layout"] == ["21-1-Spleen-A"]
+
+
 def test_coords_missing_degenerate_or_unclosed() -> None:
     bad = GOOD_COORDS[:2] + [punch("48-2-Liver", n_vertices=2)]
     assert _run("spatial.coords_missing", ctx("split_punches", _inputs(bad)))
