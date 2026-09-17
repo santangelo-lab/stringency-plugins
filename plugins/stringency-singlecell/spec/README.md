@@ -1,13 +1,11 @@
-# specs from the app-1 design sessions
+# specs
 
-Each session drops a markdown spec here (see `app1-spatial-tma-plan.md` in the engine repo,
-section 7). Implement each against the frozen contracts: module contract 3.2, predicate contract
-6.1, base judgment schema 8.1, trace tables 9.4.
+| file | settles |
+|---|---|
+| design-schema.md | `design_schema`, `echo`; the Lyons CLP design (session 1) |
+| object-types.md | the six object types and their extractors; the `qc_summary.json` contract (session 4) |
+| coordinates-input.md | the coordinates input unit and format (Lane C day-1 decision 5) |
+| predicates.md | the first four predicates with dispositions, bands, coverage (session 5) |
 
-| session | file | implements |
-|---|---|---|
-| 1 | design-schema.md | `design_schema`, `echo` |
-| 2 | objective-questions.md | `objective_questions` |
-| 4 | extractor-fields.md | `sc.anndata` extractor |
-| 5 | predicates.md | `predicates/` with fixtures |
-| 6 | vocabularies.md | `vocabularies/`, confidence criteria |
+Still open from the app-1 plan: objective-questions.md beyond `processed_object` (session 2),
+vocabularies.md and confidence criteria (session 6), the annotation judgment module (session 7).
