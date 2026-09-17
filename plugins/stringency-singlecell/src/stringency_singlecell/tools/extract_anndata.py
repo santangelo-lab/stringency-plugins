@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import defaultdict
 
 
 def counts_per_group(obs, design):  # type: ignore[no-untyped-def]

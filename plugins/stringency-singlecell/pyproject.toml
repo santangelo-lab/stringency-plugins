@@ -1,0 +1,11 @@
+[project]
+name = "stringency-singlecell"
+version = "0.0.1"
+description = "stringency domain plugin for single-cell and spatial analysis (skeleton; filled by the app-1 design sessions)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = ["stringency>=0.1.0", "pydantic>=2.7", "pyyaml>=6.0"]
+
+[project.entry-points."stringency.plugins"]
+singlecell = "stringency_singlecell:PLUGIN"

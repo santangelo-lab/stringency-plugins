@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-
 from stringency.plugins import ObjectType, Operation, Plugin, Tool
 
 from stringency_singlecell import phrasing
