@@ -20,3 +20,13 @@ for the bundle extractors (`pip install 'stringency-singlecell[extractors]'`), t
 `cells.parquet`, so positional joins fail loudly; the method repo copies it for its fixtures.
 
 From the workspace root: `uv sync && uv run pytest && uv run ruff check .`
+
+Installing into an engine from a checkout of this workspace: the workspace root pins `stringency`
+to its git URL for `uv sync`, which conflicts with the engine path `scripts/install.sh` passes, so
+run the installer with `UV_NO_SOURCES=1` (and a fresh `--label`, since `uv venv` refuses to reuse
+an existing venv without `UV_VENV_CLEAR=1`):
+
+```bash
+UV_NO_SOURCES=1 scripts/install.sh --prefix <prefix> --label 0.1.0+singlecell \
+  --plugin <path or url>@v0.1.0#subdirectory=plugins/stringency-singlecell
+```
