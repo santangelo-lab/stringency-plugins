@@ -6,4 +6,4 @@ def test_plugin_loads() -> None:
     assert "stringency-singlecell" in plugins
     p = plugins["stringency-singlecell"]
     assert "anndata" in p.object_types and "differential_expression" in p.objective_questions
-    assert p.predicates() == []
+    assert len(p.predicates()) == 4
