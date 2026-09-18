@@ -100,6 +100,7 @@ def ctx(
             "tma_layout",
             "punch_bundle_set",
             "qc_object_set",
+            "qc_metrics_table",
         ),
     )
     state = State(

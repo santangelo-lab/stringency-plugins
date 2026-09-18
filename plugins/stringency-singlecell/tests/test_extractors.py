@@ -300,3 +300,66 @@ def test_real_coordinates_and_layout_agree(design_json: Path) -> None:
         and coords["domain"]["n_polygons_not_closed"] == 0
     )
     assert layout["counts_per_group"]["timepoint_h"]["24"] == {"punch_id": 14, "animal": 2}
+
+
+def test_qc_metrics_table_extractor_on_synthetic(tmp_path) -> None:
+    import csv
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    rows = [
+        {
+            "punch_id": "6-1-Liver",
+            "tissue": "liver",
+            "region_id": "0076581_Liver",
+            "histology_include": "True",
+            "histology_issue": "False",
+            "num_cells": 7000,
+            "cells_per_mm2": 2600,
+            "median_transcripts_per_cell": 950,
+            "median_genes_per_cell": 380,
+            "fraction_transcripts_decoded_q20": 0.78,
+            "percent_transcripts_in_cells": 0.86,
+            "fail_fraction": 0.02,
+        },
+        {
+            "punch_id": "24-2-Gut-A",
+            "tissue": "gut",
+            "region_id": "0076570_Gut",
+            "histology_include": "False",
+            "histology_issue": "True",
+            "num_cells": 19030,
+            "cells_per_mm2": 3739,
+            "median_transcripts_per_cell": 280,
+            "median_genes_per_cell": 150,
+            "fraction_transcripts_decoded_q20": 0.75,
+            "percent_transcripts_in_cells": 0.99,
+            "fail_fraction": 0.157,
+        },
+    ]
+    p = tmp_path / "qc_metrics_all.csv"
+    with open(p, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    tool = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "stringency_singlecell"
+        / "tools"
+        / "extract_qc_metrics_table.py"
+    )
+    out = json.loads(
+        subprocess.run(
+            [sys.executable, str(tool), str(p), "{}"], check=True, capture_output=True, text=True
+        ).stdout
+    )
+    assert out["extractor"] == "sc.qc_metrics_table@1" and out["n_obs"] == 2
+    assert out["domain"]["n_included"] == 1 and out["domain"]["n_excluded"] == 1
+    assert (
+        out["domain"]["tissues"] == ["gut", "liver"]
+        and out["domain"]["core_attributes_missing"] == []
+    )
+    assert out["fields"]["punch_ids"] == ["6-1-Liver", "24-2-Gut-A"]

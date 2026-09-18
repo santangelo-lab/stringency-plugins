@@ -17,7 +17,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -46,6 +46,7 @@ OBJECT_TYPES = {
     "punch_bundle_set": _ot("punch_bundle_set", "extract_punch_bundle_set"),
     "qc_object_set": _ot("qc_object_set", "extract_qc_object_set"),
     "anndata": _ot("anndata", "extract_anndata"),
+    "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
 }
 
 TOOLS = {
@@ -59,6 +60,7 @@ TOOLS = {
         "extract_anndata",
         "combine_coordinates",
         "flatten_metrics",
+        "extract_qc_metrics_table",
     )
 }
 
