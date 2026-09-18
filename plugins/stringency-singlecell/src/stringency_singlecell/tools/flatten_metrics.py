@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Negative-control generator for flag_outlier_punches: flatten every numeric attribute of a
 per-punch metrics table to its within-tissue median plus a small deterministic jitter, so that no
-punch can lie beyond a mean ± 3 SD band. Shuffling punch ids would keep the same extreme values
-in the table (an outlier stays an outlier under another name), so the null here removes the
-signal instead of relabelling it. Categorical and identity columns are kept.
+punch can lie beyond a mean ± 3 SD band. The jitter is an evenly spaced symmetric grid over the
+tissue's punches (shuffled with the seed), not random draws: with 5 to 11 punches per tissue, a
+random draw can leave one punch several leave-one-out SDs from the rest, while a grid bounds
+every |z| below about 2. Shuffling punch ids would keep the same extreme values in the table (an
+outlier stays an outlier under another name), so the null here removes the signal instead of
+relabelling it. Categorical and identity columns are kept.
 
 Job JSON on stdin: {"inputs": {"input": path}, "params": {"seed": int, "jitter": 0.02},
                     "outputs": {"object": path}}
@@ -27,6 +30,7 @@ KEEP = {
     "animal_in_timepoint",
     "punch",
     "tissue",
+    "condition",
     "segmentation",
     "histology_include",
     "histology_issue",
@@ -66,14 +70,12 @@ def main() -> int:
             if not vals:
                 continue
             med = statistics.median(vals)
-            for r in group:
-                if r[c] in ("", "NA", "nan"):
-                    continue
-                v = (
-                    med * (1.0 + rng.uniform(-jitter, jitter))
-                    if med != 0
-                    else rng.uniform(-jitter, jitter)
-                )
+            present = [r for r in group if r[c] not in ("", "NA", "nan")]
+            n = len(present)
+            grid = [-1.0 + 2.0 * i / (n - 1) for i in range(n)] if n > 1 else [0.0]
+            rng.shuffle(grid)
+            for r, g in zip(present, grid, strict=True):
+                v = med * (1.0 + jitter * g) if med != 0 else jitter * g
                 r[c] = f"{v:.6g}"
                 flattened += 1
     with open(dst, "w", newline="") as f:
@@ -81,7 +83,7 @@ def main() -> int:
         w.writeheader()
         w.writerows(rows)
     print(
-        f"flattened {len(numeric)} numeric columns ({flattened} cells) to within-tissue medians ± {jitter:.0%} jitter, seed {seed}"
+        f"flattened {len(numeric)} numeric columns ({flattened} cells) to within-tissue medians ± {jitter:.0%} grid jitter, seed {seed}"
     )
     return 0
 
