@@ -87,7 +87,9 @@ def test_operation_schemas_are_valid_and_typed() -> None:
 
 def test_plugin_surface() -> None:
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.1.0"
+    from stringency_singlecell import VERSION
+
+    assert p.version == VERSION
     assert "processed_object" in p.objective_questions
     assert "qc_summary" in p.objective_questions
     assert set(p.object_types) >= {

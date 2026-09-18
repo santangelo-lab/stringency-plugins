@@ -105,10 +105,6 @@ OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "niche_characterisation",
     "interaction_inference",
 )
-    "differential_expression",
-    "niche_characterisation",
-    "interaction_inference",
-)
 
 # Defaults a drafting skill may name instead of asking (design 15; `plugins list --json`).
 DEFAULTS: dict[str, Any] = {
