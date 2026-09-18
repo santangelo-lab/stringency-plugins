@@ -1,0 +1,8 @@
+# Verdicts of the outlier-punch judgment (flag_outlier_punches). One label per punch.
+#   keep              within the mean ± 3 SD band on every core attribute (or beyond on none)
+#   review            beyond the band on exactly one core attribute, no histology issue
+#   exclude           beyond the band on two or more core attributes, or on one with a histology issue
+#   already_excluded  histology_include is false: the punch was excluded before QC and is not judged
+name: punch_qc_verdict
+version: 1
+labels: [keep, review, exclude, already_excluded]

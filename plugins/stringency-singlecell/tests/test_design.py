@@ -108,4 +108,5 @@ def test_plugin_surface() -> None:
         "sc.low_cell_count",
         "sc.qc_fail_fraction",
         "spatial.coords_missing",
+        "sc.exclusion_proposed",
     }

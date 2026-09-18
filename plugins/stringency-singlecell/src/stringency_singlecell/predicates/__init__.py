@@ -7,6 +7,6 @@ and never the data.
 
 from __future__ import annotations
 
-from stringency_singlecell.predicates import cells, join, spatial  # noqa: F401
+from stringency_singlecell.predicates import cells, join, outliers, spatial  # noqa: F401
 
 SOURCE = "stringency-singlecell"

@@ -7,6 +7,7 @@ from collections.abc import Callable
 import pytest
 from stringency.plugins import load_plugins
 from stringency.predicates import GateContext, registry
+from stringency.predicates.context import OutputBundle
 
 from tests.helpers import (
     LIVER_0076570,
@@ -39,6 +40,21 @@ GOOD_COORDS = [punch(p) for p in LIVER_0076570]
 
 # (predicate id, must-fire ctx, must-pass ctx)
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    (
+        "sc.exclusion_proposed",
+        lambda: ctx(
+            "flag_outlier_punches",
+            {},
+            phase="post",
+            output=_consensus({"6-2-Spleen-A": "exclude", "6-1-Liver": "keep"}),
+        ),
+        lambda: ctx(
+            "flag_outlier_punches",
+            {},
+            phase="post",
+            output=_consensus({"24-2-Gut-A": "already_excluded", "6-1-Liver": "keep"}),
+        ),
+    ),
     (
         "spatial.coords_missing",
         lambda: ctx("split_punches", _inputs(GOOD_COORDS[:2])),  # 48-2-Liver has no polygon
@@ -237,3 +253,57 @@ def test_area_join_unverified_when_no_qc_object() -> None:
 def test_area_join_is_invariant_and_blocks() -> None:
     spec = registry.get("sc.area_join_unverified")
     assert spec is not None and spec.invariant and spec.default.value == "block"
+
+
+# --- sc.exclusion_proposed: the judgment's consensus proposes at least one exclusion/review -----
+
+
+def _consensus(labels: dict[str, str]) -> OutputBundle:
+    from stringency.predicates.context import OutputInfo
+
+    items = tuple(
+        {
+            "item_id": pid,
+            "label": lab,
+            "ontology_id": None,
+            "source": "agreed",
+            "replicate_labels": [lab, lab, lab],
+            "replicate_confidence": ["high", "high", "medium"],
+            "review_id": None,
+            "hold_id": None,
+            "notes": [],
+        }
+        for pid, lab in labels.items()
+    )
+    return OutputBundle(
+        outputs={"consensus": OutputInfo("consensus", "consensus", "x", "blake3:00")},
+        consensus=items,
+        items=tuple(labels),
+    )
+
+
+def test_exclusion_proposed_fires_on_exclude_or_review() -> None:
+    for lab in ("exclude", "review"):
+        out = _consensus(
+            {"24-2-Gut-A": "already_excluded", "6-2-Spleen-A": lab, "6-1-Liver": "keep"}
+        )
+        v = registry.get("sc.exclusion_proposed").fn(
+            ctx("flag_outlier_punches", {}, phase="post", output=out)
+        )  # type: ignore[union-attr]
+        assert v.fired and v.evidence["n_proposed"] == 1
+        assert v.evidence["proposed"][0]["punch_id"] == "6-2-Spleen-A"
+        assert v.evidence["proposed"][0]["verdict"] == lab
+
+
+def test_exclusion_proposed_passes_when_nothing_proposed() -> None:
+    out = _consensus({"24-2-Gut-A": "already_excluded", "6-1-Liver": "keep", "6-2-Liver": "keep"})
+    v = registry.get("sc.exclusion_proposed").fn(
+        ctx("flag_outlier_punches", {}, phase="post", output=out)
+    )  # type: ignore[union-attr]
+    assert not v.fired and v.evidence["n_items"] == 3
+    assert not _run("sc.exclusion_proposed", ctx("flag_outlier_punches", {}, phase="post"))
+
+
+def test_exclusion_proposed_is_a_flag() -> None:
+    spec = registry.get("sc.exclusion_proposed")
+    assert spec is not None and spec.default.value == "flag" and not spec.invariant
