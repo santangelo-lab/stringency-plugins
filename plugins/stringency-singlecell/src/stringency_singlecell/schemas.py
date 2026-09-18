@@ -31,7 +31,9 @@ DESIGN_SCHEMA: dict[str, Any] = {
             "type": "object",
             "required": ["observation", "sample"],
             "properties": {
-                "observation": {"const": "cell"},
+                # cell for object-level projects; punch for punch-level tables (the QC summary
+                # and the outlier judgment read one row per punch)
+                "observation": {"enum": ["cell", "punch"]},
                 "sample": {"type": "string", "minLength": 1},
             },
             "additionalProperties": {"type": "string", "minLength": 1},

@@ -42,6 +42,8 @@ def echo(
             )
         elif t == "punch_coordinates":
             parts.append(f"{summary.get('n_obs')} hand-drawn punch polygons (input {name})")
+        elif t == "qc_metrics_table" and "n_obs" in summary:
+            parts.append(f"{summary['n_obs']} punches in the QC metrics table (input {name})")
         elif "n_obs" in summary:
             parts.append(
                 f"{summary['n_obs']} {design.units.get('observation', 'observation')}s (input {name})"
