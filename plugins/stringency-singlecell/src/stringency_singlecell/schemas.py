@@ -99,7 +99,9 @@ OPERATIONS.update(
 )
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
-    "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)
+    "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note,
+    "qc_summary",  # one report over the QC deliverables of many regions (cross-region QC summary, 2026-09-18)
+)
     "differential_expression",
     "niche_characterisation",
     "interaction_inference",
