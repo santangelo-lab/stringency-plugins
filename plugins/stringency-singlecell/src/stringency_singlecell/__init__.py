@@ -17,7 +17,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.1.6"
+VERSION = "0.1.7"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 

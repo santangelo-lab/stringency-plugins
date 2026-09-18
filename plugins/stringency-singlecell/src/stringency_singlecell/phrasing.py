@@ -15,6 +15,11 @@ _VERBS = {
 }
 
 
+def _plural(unit: str) -> str:
+    """cell -> cells, punch -> punches, observation -> observations."""
+    return unit + ("es" if unit.endswith(("ch", "sh", "s", "x", "z")) else "s")
+
+
 def describe(action: Action) -> str:
     p = ", ".join(f"{k}={v}" for k, v in sorted(action.parameters.items()))
     verb = _VERBS.get(action.operation, f"{action.operation.replace('_', ' ')} was run")
@@ -42,11 +47,14 @@ def echo(
             )
         elif t == "punch_coordinates":
             parts.append(f"{summary.get('n_obs')} hand-drawn punch polygons (input {name})")
-        elif t == "qc_metrics_table" and "n_obs" in summary:
+        elif (
+            str(summary.get("extractor", "")).startswith("sc.qc_metrics_table")
+            and "n_obs" in summary
+        ):
             parts.append(f"{summary['n_obs']} punches in the QC metrics table (input {name})")
         elif "n_obs" in summary:
             parts.append(
-                f"{summary['n_obs']} {design.units.get('observation', 'observation')}s (input {name})"
+                f"{summary['n_obs']} {_plural(design.units.get('observation', 'observation'))} (input {name})"
             )
     for fname, fac in design.factors.items():
         if len(fac.levels) == 1:

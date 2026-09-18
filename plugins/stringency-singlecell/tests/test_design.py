@@ -31,7 +31,7 @@ def test_reference_design_validates_and_loads() -> None:
 @pytest.mark.parametrize(
     "mutate,fragment",
     [
-        (lambda d: d["units"].__setitem__("observation", "punch"), "observation"),
+        (lambda d: d["units"].__setitem__("observation", "region"), "observation"),
         (lambda d: d.pop("replication_unit"), "replication_unit"),
         (
             lambda d: d["factors"].__setitem__("timepoint_h", {"column": "t", "levels": []}),
@@ -40,7 +40,13 @@ def test_reference_design_validates_and_loads() -> None:
         (lambda d: d.__setitem__("extra", 1), "extra"),
         (lambda d: d.__setitem__("factors", {}), "factors"),
     ],
-    ids=["obs-not-cell", "no-replication-unit", "empty-levels", "unknown-key", "no-factors"],
+    ids=[
+        "obs-not-cell-or-punch",
+        "no-replication-unit",
+        "empty-levels",
+        "unknown-key",
+        "no-factors",
+    ],
 )
 def test_design_schema_rejects(mutate, fragment: str) -> None:  # type: ignore[no-untyped-def]
     import copy
