@@ -304,6 +304,14 @@ def test_exclusion_proposed_passes_when_nothing_proposed() -> None:
     assert not _run("sc.exclusion_proposed", ctx("flag_outlier_punches", {}, phase="post"))
 
 
+def test_exclusion_proposed_fires_on_v2_review_only_consensus() -> None:
+    out = _consensus({"24-2-Gut-A": "already_excluded", "6-2-Spleen-A": "review", "6-1-Liver": "keep"})
+    v = registry.get("sc.exclusion_proposed").fn(
+        ctx("flag_outlier_punches", {}, phase="post", output=out)
+    )  # type: ignore[union-attr]
+    assert v.fired and v.evidence["n_proposed"] == 1 and "review" in (v.reason or "")
+
+
 def test_exclusion_proposed_is_a_flag() -> None:
     spec = registry.get("sc.exclusion_proposed")
     assert spec is not None and spec.default.value == "flag" and not spec.invariant

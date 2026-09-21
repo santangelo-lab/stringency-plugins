@@ -1,0 +1,11 @@
+# Verdicts of the outlier-punch judgment (flag_outlier_punches), version 2 (owner decision
+# 2026-09-21). The reviewer never excludes: exclusion is the owner's decision at the hold.
+#   keep              nothing calls the punch's data into question; a departure the reviewer has
+#                     explained (direction, size, band size, group, run-level shift) stays keep
+#   review            a person should look before the punch goes downstream: a histology issue
+#                     with a concerning-direction departure, a pattern with a mechanism (tissue
+#                     loss, focus, segmentation), a large departure, or an absolute-floor breach
+#   already_excluded  histology_include is false: the punch was excluded before QC and is not judged
+name: punch_qc_verdict
+version: 2
+labels: [keep, review, already_excluded]

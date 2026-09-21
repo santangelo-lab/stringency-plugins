@@ -8,7 +8,7 @@ from stringency.predicates import Disposition, GateContext, Verdict, predicate
 
 from stringency_singlecell.predicates._common import SOURCE
 
-PROPOSING = ("exclude", "review")
+PROPOSING = ("exclude", "review")  # exclude: vocabulary v1 only; v2 reviewers propose review
 
 
 @predicate(
@@ -21,9 +21,10 @@ PROPOSING = ("exclude", "review")
     source=SOURCE,
 )
 def exclusion_proposed(ctx: GateContext) -> Verdict:
-    """The consensus proposes excluding or reviewing at least one punch. A flag, so under the
-    standard profile the run holds here and the owner accepts or rejects the proposal before
-    anything downstream binds it. Evidence: the proposed punches with their verdicts and the
+    """The consensus proposes reviewing (vocabulary v2) or excluding (v1) at least one punch. A
+    flag, so under the standard profile the run holds here and the owner accepts or rejects the
+    proposal before anything downstream binds it; under v2 the owner's exclusions are recorded
+    there, since the reviewers never exclude. Evidence: the proposed punches with their verdicts and the
     replicates' labels. Verdicts without cited cells are the engine's `judg.evidence_exists`
     (block); no plugin predicate repeats that check."""
     if ctx.output is None:

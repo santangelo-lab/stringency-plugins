@@ -83,9 +83,11 @@ OPERATIONS: dict[str, dict[str, Any]] = {
     "resegment": {"type": "object", "properties": {}, "additionalProperties": True},
 }
 # Later modules keep open schemas until each is wrapped from ROSC_MTA2.
-# Judgment operation: an agent applies a stated outlier rule to per-punch QC attributes whose
-# band statistics (mean ± k SD within tissue) a pre-script computed, and proposes a verdict per
-# punch from `punch_qc_verdict@1` with cited cells. No parameters: the rule is in the prompt.
+# Judgment operation: reviewer agents read per-punch QC attributes whose band statistics (leave-
+# one-out median ± k scaled MAD within tissue, optional reference and group bands, direction-aware
+# departures) a pre-script computed, reason with the method's reviewer guide, and propose a
+# verdict per punch from `punch_qc_verdict@2` (keep / review / already_excluded) with cited
+# cells. No parameters: the guide is in the prompt.
 OPERATIONS["flag_outlier_punches"] = {
     "type": "object",
     "properties": {},

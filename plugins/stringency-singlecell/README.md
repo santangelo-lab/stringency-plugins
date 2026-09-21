@@ -30,3 +30,8 @@ an existing venv without `UV_VENV_CLEAR=1`):
 UV_NO_SOURCES=1 scripts/install.sh --prefix <prefix> --label 0.1.0+singlecell \
   --plugin <path or url>@v0.1.0#subdirectory=plugins/stringency-singlecell
 ```
+
+Version 0.1.8 (2026-09-21): vocabulary `punch_qc_verdict@2` (`keep`, `review`, `already_excluded`)
+for the redesigned outlier judgment, in which reviewer agents reason from direction-aware band
+departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
+the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.

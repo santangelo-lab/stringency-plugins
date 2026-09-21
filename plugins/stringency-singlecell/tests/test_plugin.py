@@ -13,3 +13,5 @@ def test_plugin_loads() -> None:
     assert len(p.predicates()) == 5
     assert "flag_outlier_punches" in p.operations and "punch_qc_verdict@1" in p.vocabularies
     assert p.vocabularies["punch_qc_verdict@1"] == ("keep", "review", "exclude", "already_excluded")
+    # v2 (2026-09-21): the reviewer never excludes; exclusion is the owner's decision at the hold
+    assert p.vocabularies["punch_qc_verdict@2"] == ("keep", "review", "already_excluded")
