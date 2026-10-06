@@ -33,6 +33,7 @@ for (col in colnames(md)) {
 }
 obsm <- names(obj@reductions)
 if (length(obj@images) > 0) obsm <- c(obsm, "spatial")
+obsm <- unique(obsm)
 layers <- tryCatch(Layers(obj[[assay]]), error = function(e) character())
 flags <- obj@misc$stringency
 if (is.null(flags)) flags <- list()
