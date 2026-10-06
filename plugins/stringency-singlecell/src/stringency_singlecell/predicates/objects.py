@@ -38,9 +38,13 @@ def export_mismatch(ctx: GateContext) -> Verdict:
     for name, ex in exports:
         ex_obs = set((ex.get("fields") or {}).get("obs", {}).keys())
         if ex.get("n_obs") != src.get("n_obs"):
-            problems.append({"object": name, "n_obs": ex.get("n_obs"), "parent_n_obs": src.get("n_obs")})
+            problems.append(
+                {"object": name, "n_obs": ex.get("n_obs"), "parent_n_obs": src.get("n_obs")}
+            )
         if ex.get("n_var") != src.get("n_var"):
-            problems.append({"object": name, "n_var": ex.get("n_var"), "parent_n_var": src.get("n_var")})
+            problems.append(
+                {"object": name, "n_var": ex.get("n_var"), "parent_n_var": src.get("n_var")}
+            )
         missing = sorted(src_obs - ex_obs)
         if missing:
             problems.append({"object": name, "obs_missing": missing})
@@ -51,5 +55,7 @@ def export_mismatch(ctx: GateContext) -> Verdict:
         if spatial_in and not spatial_out:
             problems.append({"object": name, "obsm_spatial_missing": True})
     if problems:
-        return Verdict(True, "the exported h5ad does not match its Seurat parent", {"problems": problems})
+        return Verdict(
+            True, "the exported h5ad does not match its Seurat parent", {"problems": problems}
+        )
     return Verdict(False, None, {"n_obs": src.get("n_obs"), "exports": [n for n, _ in exports]})

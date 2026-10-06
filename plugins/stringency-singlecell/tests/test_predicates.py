@@ -38,21 +38,57 @@ def _inputs(coords: list[dict] | None, *, layout: bool = True) -> dict:
 
 GOOD_COORDS = [punch(p) for p in LIVER_0076570]
 
-def _seurat(n_obs: int = 1000, n_var: int = 5106, obs: tuple[str, ...] = ("punch_id", "animal", "timepoint_h", "cell_type"), spatial: bool = True, label: str | None = "cell_type") -> dict:
+
+def _seurat(
+    n_obs: int = 1000,
+    n_var: int = 5106,
+    obs: tuple[str, ...] = ("punch_id", "animal", "timepoint_h", "cell_type"),
+    spatial: bool = True,
+    label: str | None = "cell_type",
+) -> dict:
     """A seurat_object envelope as tools/extract_seurat.R prints it (Lane F plan 5.0)."""
     return {
-        "extractor": "sc.seurat_object@1", "type": "seurat_object", "n_obs": n_obs, "n_var": n_var,
-        "fields": {"obs": {c: {"dtype": "character", "n_unique": 3} for c in obs},
-                   "obsm": (["pca", "umap"] + (["spatial"] if spatial else [])), "layers": ["counts", "data"],
-                   "uns_flags": {"normalisation": {"method": "logarea", "scale_factor": 100}, "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None}},
-        "counts_per_group": {}, "domain": {"assay": "Xenium", "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None},
+        "extractor": "sc.seurat_object@1",
+        "type": "seurat_object",
+        "n_obs": n_obs,
+        "n_var": n_var,
+        "fields": {
+            "obs": {c: {"dtype": "character", "n_unique": 3} for c in obs},
+            "obsm": (["pca", "umap"] + (["spatial"] if spatial else [])),
+            "layers": ["counts", "data"],
+            "uns_flags": {
+                "normalisation": {"method": "logarea", "scale_factor": 100},
+                "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None,
+            },
+        },
+        "counts_per_group": {},
+        "domain": {
+            "assay": "Xenium",
+            "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None,
+        },
     }
 
 
-def _anndata(n_obs: int = 1000, n_var: int = 5106, obs: tuple[str, ...] = ("punch_id", "animal", "timepoint_h", "cell_type"), spatial: bool = True) -> dict:
-    return {"extractor": "sc.anndata@1", "type": "anndata", "n_obs": n_obs, "n_var": n_var,
-            "fields": {"obs": {c: {"dtype": "category", "n_unique": 3} for c in obs}, "obsm": (["spatial"] if spatial else []), "layers": [], "uns_flags": {}},
-            "counts_per_group": {}, "domain": {}}
+def _anndata(
+    n_obs: int = 1000,
+    n_var: int = 5106,
+    obs: tuple[str, ...] = ("punch_id", "animal", "timepoint_h", "cell_type"),
+    spatial: bool = True,
+) -> dict:
+    return {
+        "extractor": "sc.anndata@1",
+        "type": "anndata",
+        "n_obs": n_obs,
+        "n_var": n_var,
+        "fields": {
+            "obs": {c: {"dtype": "category", "n_unique": 3} for c in obs},
+            "obsm": (["spatial"] if spatial else []),
+            "layers": [],
+            "uns_flags": {},
+        },
+        "counts_per_group": {},
+        "domain": {},
+    }
 
 
 def _export(parent: dict, out: dict) -> dict:
@@ -63,7 +99,11 @@ def _export(parent: dict, out: dict) -> dict:
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
     (
         "sc.export_mismatch",
-        lambda: ctx("export_h5ad", _export(_seurat(), _anndata(n_obs=990, obs=("punch_id", "animal", "timepoint_h"))), phase="post"),
+        lambda: ctx(
+            "export_h5ad",
+            _export(_seurat(), _anndata(n_obs=990, obs=("punch_id", "animal", "timepoint_h"))),
+            phase="post",
+        ),
         lambda: ctx("export_h5ad", _export(_seurat(), _anndata()), phase="post"),
     ),
     (
@@ -331,7 +371,9 @@ def test_exclusion_proposed_passes_when_nothing_proposed() -> None:
 
 
 def test_exclusion_proposed_fires_on_v2_review_only_consensus() -> None:
-    out = _consensus({"24-2-Gut-A": "already_excluded", "6-2-Spleen-A": "review", "6-1-Liver": "keep"})
+    out = _consensus(
+        {"24-2-Gut-A": "already_excluded", "6-2-Spleen-A": "review", "6-1-Liver": "keep"}
+    )
     v = registry.get("sc.exclusion_proposed").fn(
         ctx("flag_outlier_punches", {}, phase="post", output=out)
     )  # type: ignore[union-attr]
@@ -344,11 +386,21 @@ def test_exclusion_proposed_is_a_flag() -> None:
 
 
 def test_export_mismatch_names_each_problem() -> None:
-    c = ctx("export_h5ad", _export(_seurat(), _anndata(n_obs=990, n_var=5000, obs=("punch_id",), spatial=False)), phase="post")
+    c = ctx(
+        "export_h5ad",
+        _export(_seurat(), _anndata(n_obs=990, n_var=5000, obs=("punch_id",), spatial=False)),
+        phase="post",
+    )
     v = registry.get("sc.export_mismatch").fn(c)
     assert v.fired
     kinds = {k for p in v.evidence["problems"] for k in p if k != "object"}
-    assert {"n_obs", "n_var", "obs_missing", "label_column_missing", "obsm_spatial_missing"} <= kinds
+    assert {
+        "n_obs",
+        "n_var",
+        "obs_missing",
+        "label_column_missing",
+        "obsm_spatial_missing",
+    } <= kinds
 
 
 def test_export_mismatch_fires_without_a_pair() -> None:

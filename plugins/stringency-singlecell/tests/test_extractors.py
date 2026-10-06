@@ -368,7 +368,8 @@ def test_qc_metrics_table_extractor_on_synthetic(tmp_path) -> None:
 import shutil as _shutil
 
 needs_r = pytest.mark.skipif(
-    _shutil.which("Rscript") is None, reason="extract_seurat.R needs Rscript with SeuratObject and jsonlite (the xenium-r image)"
+    _shutil.which("Rscript") is None,
+    reason="extract_seurat.R needs Rscript with SeuratObject and jsonlite (the xenium-r image)",
 )
 
 
@@ -377,7 +378,9 @@ def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
     """Build a tiny Seurat object in R, run the extractor through the same path the engine uses
     (Rscript <tool> <object> <design>), and check the envelope keys the anndata extractor also
     prints."""
-    import json, subprocess
+    import json
+    import subprocess
+
     tools = Path(__file__).resolve().parents[1] / "src" / "stringency_singlecell" / "tools"
     rds = tmp_path / "obj.rds"
     r = f"""
@@ -390,7 +393,12 @@ def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
     saveRDS(obj, "{rds}")
     """
     subprocess.run(["Rscript", "-e", r], check=True)
-    out = subprocess.run(["Rscript", str(tools / "extract_seurat.R"), str(rds), str(design_json)], check=True, capture_output=True, text=True).stdout
+    out = subprocess.run(
+        ["Rscript", str(tools / "extract_seurat.R"), str(rds), str(design_json)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
     env = json.loads(out)
     assert env["extractor"] == "sc.seurat_object@1" and env["type"] == "seurat_object"
     assert env["n_obs"] == 10 and env["n_var"] == 6
