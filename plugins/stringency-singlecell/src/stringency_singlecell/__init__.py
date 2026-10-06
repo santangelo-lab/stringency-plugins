@@ -2,7 +2,8 @@
 
 Object types: `xenium_bundle` (a region bundle), `punch_coordinates` (the hand-drawn selections),
 `tma_layout` (the transcribed TMA map), `punch_bundle_set` (one bundle per punch after the
-split), `qc_object_set` (QC'd objects plus `qc_summary.json`), and `anndata` (any later object).
+split), `qc_object_set` (QC'd objects plus `qc_summary.json`), `anndata` (an h5ad object) and
+`seurat_object` (a Seurat v5 `.rds`, read by an R extractor inside the module's image; 0.2.0).
 Operations `split_punches` and `qc_cells` are typed; the later ones are provisional.
 """
 
@@ -17,7 +18,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.1.8"
+VERSION = "0.2.0"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -47,6 +48,7 @@ OBJECT_TYPES = {
     "qc_object_set": _ot("qc_object_set", "extract_qc_object_set"),
     "anndata": _ot("anndata", "extract_anndata"),
     "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
+    "seurat_object": _ot("seurat_object", "extract_seurat"),
 }
 
 TOOLS = {
@@ -63,6 +65,8 @@ TOOLS = {
         "extract_qc_metrics_table",
     )
 }
+# the one R tool: the engine dispatches `.R` scripts through Rscript inside the module's env
+TOOLS["extract_seurat"] = Tool("extract_seurat", _TOOLS / "extract_seurat.R", env=None)
 
 PLUGIN = Plugin(
     name=NAME,

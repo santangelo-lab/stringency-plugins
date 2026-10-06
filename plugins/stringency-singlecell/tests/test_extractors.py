@@ -363,3 +363,38 @@ def test_qc_metrics_table_extractor_on_synthetic(tmp_path) -> None:
         and out["domain"]["core_attributes_missing"] == []
     )
     assert out["fields"]["punch_ids"] == ["6-1-Liver", "24-2-Gut-A"]
+
+
+import shutil as _shutil
+
+needs_r = pytest.mark.skipif(
+    _shutil.which("Rscript") is None, reason="extract_seurat.R needs Rscript with SeuratObject and jsonlite (the xenium-r image)"
+)
+
+
+@needs_r
+def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
+    """Build a tiny Seurat object in R, run the extractor through the same path the engine uses
+    (Rscript <tool> <object> <design>), and check the envelope keys the anndata extractor also
+    prints."""
+    import json, subprocess
+    tools = Path(__file__).resolve().parents[1] / "src" / "stringency_singlecell" / "tools"
+    rds = tmp_path / "obj.rds"
+    r = f"""
+    suppressPackageStartupMessages(library(SeuratObject))
+    m <- matrix(rpois(60, 3), nrow = 6, dimnames = list(paste0("g", 1:6), paste0("c", 1:10)))
+    obj <- CreateSeuratObject(CreateAssay5Object(counts = as(m, "dgCMatrix")), assay = "Xenium")
+    obj$punch_id <- rep(c("6-1-Liver", "24-1-Liver"), each = 5); obj$animal <- rep(c("6-1", "24-1"), each = 5)
+    obj$timepoint_h <- rep(c("6", "24"), each = 5); obj$condition <- "CLP"; obj$slide <- "0076581"; obj$cell_area <- runif(10, 20, 60)
+    Misc(obj, slot = "stringency") <- list(normalisation = list(method = "logarea", scale_factor = 100))
+    saveRDS(obj, "{rds}")
+    """
+    subprocess.run(["Rscript", "-e", r], check=True)
+    out = subprocess.run(["Rscript", str(tools / "extract_seurat.R"), str(rds), str(design_json)], check=True, capture_output=True, text=True).stdout
+    env = json.loads(out)
+    assert env["extractor"] == "sc.seurat_object@1" and env["type"] == "seurat_object"
+    assert env["n_obs"] == 10 and env["n_var"] == 6
+    assert set(env["fields"]) == {"obs", "obsm", "layers", "uns_flags"}
+    assert "cell_area" in env["fields"]["obs"] and "counts" in env["fields"]["layers"]
+    assert env["fields"]["uns_flags"]["normalisation"]["method"] == "logarea"
+    assert env["counts_per_group"]["timepoint_h"]["6"]["observation"] == 5

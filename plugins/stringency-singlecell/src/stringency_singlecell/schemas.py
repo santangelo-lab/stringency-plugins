@@ -88,6 +88,36 @@ OPERATIONS: dict[str, dict[str, Any]] = {
 # departures) a pre-script computed, reason with the method's reviewer guide, and propose a
 # verdict per punch from `punch_qc_verdict@2` (keep / review / already_excluded) with cited
 # cells. No parameters: the guide is in the prompt.
+OPERATIONS["merge_objects"] = {"type": "object", "properties": {}, "additionalProperties": False}
+OPERATIONS["normalize"] = {
+    "type": "object",
+    "properties": {
+        "method": {"type": "string", "enum": ["logarea", "log_total"], "description": "LogArea (counts per cell area x scale_factor, log1p) or library-size log1p"},
+        "scale_factor": {**_NUM, "minimum": 0, "description": "scale factor before log1p"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["reduce_cluster"] = {
+    "type": "object",
+    "properties": {
+        "n_features": {**_INT, "description": "variable features"},
+        "ndim": {**_INT, "description": "principal components used for the graph"},
+        "resolutions": {"type": "array", "items": _NUM, "description": "Louvain resolutions computed"},
+        "resolution": {**_NUM, "description": "the resolution whose clusters become the identity"},
+        "seed": {**_INT, "description": "random seed"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["find_markers"] = {
+    "type": "object",
+    "properties": {
+        "logfc_min": {**_NUM, "description": "minimum log fold change"},
+        "min_pct": {**_NUM, "minimum": 0, "maximum": 1, "description": "minimum fraction of cells expressing"},
+        "test": {"type": "string", "description": "Seurat test name"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["export_h5ad"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["flag_outlier_punches"] = {
     "type": "object",
     "properties": {},
@@ -98,10 +128,8 @@ OPERATIONS.update(
     {
         op: {"type": "object", "properties": {}, "additionalProperties": True}
         for op in (
-            "normalize",
             "select_hvg",
             "cluster",
-            "find_markers",
             "annotate_clusters",
             "spatial_neighborhood",
             "characterise_niches",

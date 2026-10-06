@@ -1,7 +1,7 @@
 # Object types (design 4.2), `stringency-singlecell` 0.1.0
 
 Every extractor is a standalone script under `tools/`, run as `python3 <script> <path>
-<design.json>` inside the module environment; shared parsing is in `tools/_xenium_common.py`,
+<design.json>` (or `Rscript <script> ...` for `extract_seurat.R`; the executor dispatches by suffix) inside the module environment; shared parsing is in `tools/_xenium_common.py`,
 imported through the script's own directory so the plugin package need not be installed in the
 container. `extract_xenium_bundle` and `extract_punch_bundle_set` need pyarrow and h5py; the rest
 are stdlib.
@@ -14,6 +14,7 @@ are stdlib.
 | `punch_bundle_set` | `sc.punch_bundle_set@1` | dir of `punch_*/` bundles | cells | `punch_ids` | output of `split-punches` |
 | `qc_object_set` | `sc.qc_object_set@1` | dir with `qc_summary.json` | cells after QC | `punch_ids` | output of `qc-cells` |
 | `anndata` | `sc.anndata@1` | `.h5ad` | cells | obs columns | later modules |
+| `seurat_object` | `sc.seurat_object@1` | `.rds` (Seurat v5) | cells | meta.data columns, reductions as `obsm` (`spatial` when any FOV has coordinates), layers, `uns_flags` from `obj@misc$stringency` | the R pipeline's objects (0.2.0, Lane F); extractor `tools/extract_seurat.R`, run as `Rscript` inside the module's image; same envelope keys as `anndata` so predicates stay object-agnostic |
 
 `fields.columns` is set only on `tma_layout`, deliberately: `init.column_missing` checks every
 design column against every object input that reports `columns`, and the design's columns
