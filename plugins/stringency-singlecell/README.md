@@ -43,6 +43,13 @@ for the redesigned outlier judgment, in which reviewer agents reason from direct
 departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
 the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.
 
+Version 0.4.2 (2026-10-07, late afternoon): `sc.batch_route_review` v2, the owner's reading of the hold:
+it opens only when the reviewers agreed (a disagreement is settled at the engine's item hold, whose label is
+the route), `accept` means agreement with the reviewers and the operator acts on the label (`correct_batch`
+forks at `03_reduce` with the recommended correction, `proceed_uncorrected` continues, `cannot_tell` needs the
+route in the reason), `reject` means disagreement with the route in the reason; the evidence carries the
+replicates' `recommended_correction`.
+
 Version 0.4.1 (2026-10-07): generator tool `mix_batches`, the negative control of `assess-batch` (removes the
 slide structure of a `batch_evidence` directory; source documented in the method's `modules/assess-batch/controls/`).
 

@@ -545,20 +545,78 @@ def test_export_mismatch_fires_without_a_pair() -> None:
     assert registry.get("sc.export_mismatch").fn(c).fired
 
 
-def test_batch_route_review_fires_on_every_label() -> None:
+REASON_V2 = (
+    "the batch route awaits the owner's decision (reviewers agreed: {lab}): accept means "
+    "you agree with the reviewers and the operator acts on that label (correct_batch: a fork "
+    "at 03_reduce with the recommended correction; proceed_uncorrected: this run continues; "
+    "cannot_tell: your reason must name the route); reject means you disagree and your "
+    "reason names the route"
+)
+
+
+def _consensus_from(labels: dict[str, str], source: str, replicates=()) -> OutputBundle:
+    out = _consensus(labels)
+    items = tuple({**it, "source": source} for it in out.consensus)
+    return OutputBundle(
+        outputs=out.outputs, consensus=items, items=out.items, replicates=tuple(replicates)
+    )
+
+
+def test_batch_route_review_fires_on_every_agreed_label() -> None:
     for lab in ("proceed_uncorrected", "correct_batch", "cannot_tell"):
         v = registry.get("sc.batch_route_review").fn(
             ctx("assess_batch", {}, phase="post", output=_consensus({"liver": lab}))
         )  # type: ignore[union-attr]
         assert v.fired and v.evidence["consensus_label"] == lab
-        assert v.reason == (
-            f"the batch route awaits the owner's decision (reviewers' consensus: {lab}): accept "
-            "continues this run without correction; reject closes it, and the operator forks at "
-            "03_reduce with the correction named in your reason"
-        )
+        assert v.reason == REASON_V2.format(lab=lab)
         assert v.evidence["items"][0]["replicate_labels"] == [lab, lab, lab]
+        assert "recommended_correction" not in v.evidence
     v = registry.get("sc.batch_route_review").fn(ctx("assess_batch", {}, phase="post"))  # type: ignore[union-attr]
     assert not v.fired
+
+
+def test_batch_route_review_silent_when_the_owner_decided_at_the_item_hold() -> None:
+    for source in ("accepted", "override", "unresolved"):
+        v = registry.get("sc.batch_route_review").fn(
+            ctx(
+                "assess_batch",
+                {},
+                phase="post",
+                output=_consensus_from({"liver": "correct_batch"}, source),
+            )
+        )  # type: ignore[union-attr]
+        assert not v.fired, source
+        assert v.evidence["sources"] == [source]
+
+
+def test_batch_route_review_carries_the_recommended_correction() -> None:
+    reps = [
+        {
+            "items": [
+                {"item_id": "liver", "label": "correct_batch", "recommended_correction": "harmony"}
+            ]
+        },
+        {
+            "items": [
+                {"item_id": "liver", "label": "correct_batch", "recommended_correction": "harmony"}
+            ]
+        },
+        {
+            "items": [
+                {"item_id": "liver", "label": "correct_batch", "recommended_correction": "rpca"}
+            ]
+        },
+    ]
+    v = registry.get("sc.batch_route_review").fn(
+        ctx(
+            "assess_batch",
+            {},
+            phase="post",
+            output=_consensus_from({"liver": "correct_batch"}, "agreed", reps),
+        )
+    )  # type: ignore[union-attr]
+    assert v.fired
+    assert v.evidence["recommended_correction"] == ["harmony", "harmony", "rpca"]
 
 
 def test_batch_effect_suspected_is_logged_not_held() -> None:
