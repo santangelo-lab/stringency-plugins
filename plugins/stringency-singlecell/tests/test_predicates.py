@@ -194,6 +194,15 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         lambda: ctx("export_h5ad", _export(_seurat(), _anndata()), phase="post"),
     ),
     (
+        "sc.batch_route_review",
+        # always fires once the judgment has a consensus, whatever the label (owner, 2026-10-07)
+        lambda: ctx(
+            "assess_batch", {}, phase="post", output=_consensus({"liver": "proceed_uncorrected"})
+        ),
+        # must-pass only without a consensus: nothing to decide on
+        lambda: ctx("assess_batch", {}, phase="post", output=_consensus({})),
+    ),
+    (
         "sc.exclusion_proposed",
         lambda: ctx(
             "flag_outlier_punches",
@@ -534,3 +543,25 @@ def test_export_mismatch_names_each_problem() -> None:
 def test_export_mismatch_fires_without_a_pair() -> None:
     c = ctx("export_h5ad", {"object": obj("seurat_object", _seurat())}, phase="post")
     assert registry.get("sc.export_mismatch").fn(c).fired
+
+
+def test_batch_route_review_fires_on_every_label() -> None:
+    for lab in ("proceed_uncorrected", "correct_batch", "cannot_tell"):
+        v = registry.get("sc.batch_route_review").fn(
+            ctx("assess_batch", {}, phase="post", output=_consensus({"liver": lab}))
+        )  # type: ignore[union-attr]
+        assert v.fired and v.evidence["consensus_label"] == lab
+        assert v.reason == (
+            f"the batch route awaits the owner's decision (reviewers' consensus: {lab}): accept "
+            "continues this run without correction; reject closes it, and the operator forks at "
+            "03_reduce with the correction named in your reason"
+        )
+        assert v.evidence["items"][0]["replicate_labels"] == [lab, lab, lab]
+    v = registry.get("sc.batch_route_review").fn(ctx("assess_batch", {}, phase="post"))  # type: ignore[union-attr]
+    assert not v.fired
+
+
+def test_batch_effect_suspected_is_logged_not_held() -> None:
+    spec = registry.get("sc.batch_effect_suspected")
+    assert spec is not None and spec.version == 2
+    assert str(spec.default).lower().endswith("log")

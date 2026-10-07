@@ -1,4 +1,4 @@
-# Object types (design 4.2), `stringency-singlecell` 0.3.1
+# Object types (design 4.2), `stringency-singlecell` 0.4.0
 
 Every extractor is a standalone script under `tools/`, run as `python3 <script> <path>
 <design.json>` (or `Rscript <script> ...` for `extract_seurat.R`; the executor dispatches by suffix) inside the module environment; shared parsing is in `tools/_xenium_common.py`,
@@ -16,6 +16,7 @@ are stdlib.
 | `anndata` | `sc.anndata@1` | `.h5ad` | cells | obs columns | later modules |
 | `seurat_object` | `sc.seurat_object@1` | `.rds` (Seurat v5) | cells | meta.data columns, reductions as `obsm` (`spatial` when any FOV has coordinates), layers, `uns_flags` from `obj@misc$stringency` | the R pipeline's objects (0.2.0, Lane F); extractor `tools/extract_seurat.R`, run as `Rscript` inside the module's image; same envelope keys as `anndata` so predicates stay object-agnostic |
 | `cluster_evidence` | `sc.cluster_evidence@1` | dir with `manifest.json` | cells (manifest) | `summary_columns` of `cluster_summary.csv` (not `columns`, which would make `init.column_missing` check the design columns against it), `cluster_ids` | the tables the annotation judgment reads, written by `find-markers` (0.3.0, Lane F); contract below |
+| `batch_evidence` | `sc.batch_evidence@1` | dir with `manifest.json` | cells (manifest) | `summary_columns` of `batch_overview.csv`; `uns_flags.batch_assessment` = the manifest's summary | the tables the batch-route judgment reads, written by `cluster-umap` (0.4.0); contract below |
 
 `fields.columns` is set only on `tma_layout`, deliberately: `init.column_missing` checks every
 design column against every object input that reports `columns`, and the design's columns
@@ -84,3 +85,22 @@ Written by the method's `find-markers` module after clustering, read by `annotat
 The extractor (stdlib) refuses a directory without `manifest.json` (contract version 1) or
 `cluster_summary.csv`; `domain.files_missing` lists any other file absent so a predicate or the
 report can say what the evidence lacked.
+
+## `batch_evidence`
+
+Written by the method's `cluster-umap` module beside the clustered object, read by `assess-batch`
+(the batch-route judgment; its `pre.py` turns it into evidence tables) and by `upstream-report`.
+One directory:
+
+| file | content |
+|---|---|
+| `manifest.json` | `{"batch_evidence": 1, organ, batch_key, timepoint_column, clustering_column, resolution, n_clusters, n_cells, rule: {knn_threshold, excess_threshold, min_cluster_frac, frac_threshold, text}, summary: {the batch_summary dict}, files}` |
+| `batch_overview.csv` | ONE row, the judgment's item: `dataset` (item key, the organ), `organ, n_cells, n_clusters, batch_key, batch_levels` (semicolon list), `timepoint_column, shared_timepoints` (semicolon list), `knn_same_batch_excess_overall, n_clusters_flagged, fraction_cells_in_flagged_clusters, min_animals_per_batch_in_shared_timepoints, rule_suspected` |
+| `batch_assessment.csv` | per cluster: `cluster, n_cells, pct_cells, dominant_batch, dominant_batch_pct, expected_dominant_pct, batch_excess, n_cells_shared_timepoints, knn_same_batch_excess, flagged` |
+| `cluster_summary.csv` | the clustering module's per-cluster summary |
+| `slide_by_timepoint.csv` | `slide, timepoint_h, n_cells, n_animals, n_punches, punches`: the design's confounding, as a table the reviewer can cite |
+| `composition_by_slide.csv`, `composition_by_timepoint.csv`, `composition_by_punch.csv`, `composition_by_animal.csv` | wide counts, `cluster` first column |
+
+The extractor (stdlib) refuses a directory without `manifest.json` (contract version 1) or
+`batch_overview.csv`; it reports the manifest's summary under `uns_flags.batch_assessment` so a
+predicate written against the Seurat object's flag reads this object the same way.

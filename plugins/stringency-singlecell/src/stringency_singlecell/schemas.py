@@ -176,6 +176,11 @@ OPERATIONS["annotate_clusters"] = {
 }
 OPERATIONS["apply_labels"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["report_upstream"] = {"type": "object", "properties": {}, "additionalProperties": False}
+# Judgment on the batch route after clustering (owner, 2026-10-07 afternoon): reviewers read the
+# per-cluster batch tables and call proceed_uncorrected / correct_batch / cannot_tell from
+# `batch_route@1`; no parameters, the guide is in the prompt. Its hold always opens
+# (`sc.batch_route_review`).
+OPERATIONS["assess_batch"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["export_h5ad"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["flag_outlier_punches"] = {
     "type": "object",

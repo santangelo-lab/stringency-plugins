@@ -8,6 +8,7 @@ and never the data.
 from __future__ import annotations
 
 from stringency_singlecell.predicates import (  # noqa: F401
+    batch,
     cells,
     decisions,
     join,

@@ -1,0 +1,19 @@
+# batch_route@1: the closed label set of the batch-route judgment (assess_batch), the step of
+# xenium-upstream between clustering and markers (owner decision 2026-10-07 afternoon: batch
+# effect assessment is a judgment with a hold, not a parameter choice). Three reviewers read the
+# per-cluster batch tables (dominant slide against the share its time points predict; the
+# nearest-neighbour same-slide excess within the time points both slides carry; the slide by time
+# point design table) and call one label for the dataset. The hold then opens whatever the label
+# (`sc.batch_route_review`); the owner's accept continues uncorrected, reject sends the operator to
+# a fork at 03_reduce with the correction the owner names.
+#   proceed_uncorrected  the batch structure is what the time points predict, or is confounded with
+#                        biology in a way a correction would erase, so the uncorrected clustering
+#                        stands
+#   correct_batch        cells of the same time point separate by slide beyond what their
+#                        composition predicts: a technical structure a correction should remove
+#                        before annotation
+#   cannot_tell          the design confounds slide with time point or animal so the tables cannot
+#                        separate them; the owner decides
+name: batch_route
+version: 1
+labels: [proceed_uncorrected, correct_batch, cannot_tell]

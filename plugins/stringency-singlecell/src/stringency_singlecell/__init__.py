@@ -4,7 +4,8 @@ Object types: `xenium_bundle` (a region bundle), `punch_coordinates` (the hand-d
 `tma_layout` (the transcribed TMA map), `punch_bundle_set` (one bundle per punch after the
 split), `qc_object_set` (QC'd objects plus `qc_summary.json`), `anndata` (an h5ad object) and
 `seurat_object` (a Seurat v5 `.rds`, read by an R extractor inside the module's image; 0.2.0) and
-`cluster_evidence` (the tables the annotation judgment reads; 0.3.0). The QC and upstream
+`cluster_evidence` (the tables the annotation judgment reads; 0.3.0) and `batch_evidence` (the
+tables the batch-route judgment reads; 0.4.0). The QC and upstream
 operations are typed; the niche, DE and report ones are provisional.
 """
 
@@ -19,7 +20,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -51,6 +52,7 @@ OBJECT_TYPES = {
     "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
     "seurat_object": _ot("seurat_object", "extract_seurat"),
     "cluster_evidence": _ot("cluster_evidence", "extract_cluster_evidence"),
+    "batch_evidence": _ot("batch_evidence", "extract_batch_evidence"),
 }
 
 TOOLS = {
@@ -66,6 +68,7 @@ TOOLS = {
         "flatten_metrics",
         "extract_qc_metrics_table",
         "extract_cluster_evidence",
+        "extract_batch_evidence",
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
     )
 }

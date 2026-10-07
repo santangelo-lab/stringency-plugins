@@ -43,6 +43,13 @@ for the redesigned outlier judgment, in which reviewer agents reason from direct
 departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
 the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.
 
+Version 0.4.0 (2026-10-07, afternoon): batch effect assessment is a judgment step of `xenium-upstream`
+(owner decision): operation `assess_batch`; object type `batch_evidence` with
+`tools/extract_batch_evidence.py`; vocabulary `batch_route@1` (`proceed_uncorrected`, `correct_batch`,
+`cannot_tell`); predicate `sc.batch_route_review` (flag; always opens once the judgment has a consensus:
+accept continues uncorrected, reject sends the operator to a fork at `03_reduce`); `sc.batch_effect_suspected`
+is version 2 and logged, not held.
+
 Version 0.3.1 (2026-10-07): tool `shuffle_markers` (the negative-control generator of `annotate-clusters`); the `cluster_evidence` extractor reports `summary_columns`, not `columns`.
 
 Version 0.3.0 (2026-10-07, Lane F, the `xenium-upstream` pipeline): typed operations `reduce_pca`

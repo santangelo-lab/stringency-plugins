@@ -461,6 +461,83 @@ def test_cluster_evidence_extractor(tmp_path: Path, design_json: Path) -> None:
     assert res.returncode == 1 and "manifest.json" in res.stderr
 
 
+def test_batch_evidence_extractor(tmp_path: Path, design_json: Path) -> None:
+    import csv
+
+    root = tmp_path / "batch_evidence"
+    root.mkdir()
+    summary = {
+        "batch_key": "slide",
+        "shared_timepoints": ["24"],
+        "knn_same_batch_excess_overall": 0.344,
+        "n_clusters_flagged": 0,
+        "suspected": True,
+    }
+    (root / "manifest.json").write_text(
+        json.dumps(
+            {
+                "batch_evidence": 1,
+                "organ": "liver",
+                "batch_key": "slide",
+                "timepoint_column": "timepoint_h",
+                "clustering_column": "Xenium_snn_res.0.4",
+                "resolution": 0.4,
+                "n_clusters": 20,
+                "n_cells": 103127,
+                "rule": {"knn_threshold": 0.3},
+                "summary": summary,
+            }
+        )
+    )
+    cols = [
+        "dataset",
+        "organ",
+        "n_cells",
+        "n_clusters",
+        "batch_key",
+        "knn_same_batch_excess_overall",
+        "rule_suspected",
+    ]
+    with open(root / "batch_overview.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerow(
+            {
+                "dataset": "liver",
+                "organ": "liver",
+                "n_cells": 103127,
+                "n_clusters": 20,
+                "batch_key": "slide",
+                "knn_same_batch_excess_overall": 0.344,
+                "rule_suspected": "true",
+            }
+        )
+    with open(root / "batch_assessment.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["cluster", "n_cells", "batch_excess"])
+        w.writeheader()
+        w.writerow({"cluster": "0", "n_cells": 100, "batch_excess": 0.1})
+        w.writerow({"cluster": "1", "n_cells": 200, "batch_excess": 0.6})
+    env = run_tool("extract_batch_evidence", root, design_json)
+    assert env["extractor"] == "sc.batch_evidence@1" and env["type"] == "batch_evidence"
+    assert env["n_obs"] == 103127 and env["n_var"] == 0
+    assert env["fields"]["summary_columns"] == cols and "columns" not in env["fields"]
+    assert env["fields"]["uns_flags"]["batch_assessment"]["suspected"] is True
+    d = env["domain"]
+    assert d["organ"] == "liver" and d["dataset"] == "liver" and d["n_clusters_assessed"] == 2
+    assert d["rule_suspected"] is True and d["knn_same_batch_excess_overall"] == 0.344
+    assert "slide_by_timepoint.csv" in d["files_missing"]
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    (bare / "manifest.json").write_text(json.dumps({"batch_evidence": 1}))
+    res = subprocess.run(
+        [sys.executable, str(TOOLS["extract_batch_evidence"].script), str(bare), str(design_json)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res.returncode == 1 and "batch_overview.csv" in res.stderr
+
+
 def test_shuffle_markers_tool(tmp_path: Path) -> None:
     """The negative-control generator permutes gene symbols across the marker and expression
     tables of a cluster_evidence directory and rewrites top_markers; shapes are unchanged."""

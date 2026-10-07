@@ -118,9 +118,15 @@ def test_plugin_surface() -> None:
         "sc.export_mismatch",
         "sc.decision_unreviewed",
         "sc.batch_effect_suspected",
+        "sc.batch_route_review",
         "sc.unknown_fraction",
         "qc.filter_ordering",
     }
+    assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
+        "proceed_uncorrected",
+        "correct_batch",
+        "cannot_tell",
+    )
     assert "reduce_cluster" not in p.operations
     assert validate({"integration": "harmony", "n_features": 2000}, OPERATIONS["reduce_pca"]) == []
     assert validate({"integration": "mnn"}, OPERATIONS["reduce_pca"])

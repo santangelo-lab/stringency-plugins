@@ -81,28 +81,28 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="sc.batch_effect_suspected",
-    version=1,
+    version=2,
     scope=["cluster_umap"],
     phase="post",
-    default=Disposition.FLAG,
+    default=Disposition.LOG,
     covers=["cluster_umap.*", "reduce_pca.integration"],
     source=SOURCE,
 )
 def batch_effect_suspected(ctx: GateContext) -> Verdict:
     """The clustering step assessed batch structure (composition per slide, nearest-neighbour
     same-slide fraction within the time point both slides carry) and wrote
-    `misc$stringency$batch_assessment` with `suspected`. The first run concatenates without
-    correction (owner, 2026-10-07); when the assessment says suspected, the hold names the
-    rerun route: a fork at the PCA step with `integration=harmony`."""
+    `misc$stringency$batch_assessment` with `suspected` from a declared rule. Since 0.4.0 this
+    is the RECORD of that rule, logged and not held (owner, 2026-10-07 afternoon): the batch
+    route is decided by the `assess_batch` judgment that follows and its always-open hold
+    (`sc.batch_route_review`). Version 1 opened a flag hold here."""
     ba = _uns(_latest_seurat(ctx)).get("batch_assessment")
     if not isinstance(ba, dict):
         return Verdict(False, None, {"batch_assessment": None})
     if ba.get("suspected") is True:
         return Verdict(
             True,
-            "the clustering shows a batch structure the time points do not explain; to rerun "
-            "with correction: stringency fork --from <run> --at 03_reduce "
-            "--set 03_reduce.integration=harmony --reason '...'",
+            "the clustering module's rule finds a batch structure the time points do not explain; "
+            "logged, not held: the assess_batch judgment and its hold decide the route",
             {"batch_assessment": ba},
         )
     return Verdict(False, None, {"batch_assessment": ba})
