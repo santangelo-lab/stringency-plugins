@@ -613,3 +613,48 @@ def test_shuffle_markers_tool(tmp_path: Path) -> None:
         first.setdefault(r["cluster"], []).append(r["gene"])
     assert summ["0"] == ";".join(first["0"][:8]) and summ["1"] == ";".join(first["1"][:8])
     assert "shuffle_markers seed 3" in json.loads((out / "manifest.json").read_text())["source"]
+
+
+def test_mix_batches_tool(tmp_path: Path) -> None:
+    """The negative-control generator of assess-batch removes the slide structure of a
+    batch_evidence directory: batch_excess zero everywhere, overall kNN excess near zero, the
+    cluster count and the file set unchanged. Runs on the method's synthetic split fixture."""
+    import csv
+    import shutil
+    import subprocess
+    import sys
+
+    from stringency_singlecell import TOOLS
+
+    fixture = Path(
+        "/home/jrrose5/github/stringency-xenium-method/modules/assess-batch/controls/fixtures/batch_split"
+    )
+    if not fixture.exists():
+        pytest.skip("method fixture not present on this machine")
+    src = tmp_path / "split"
+    shutil.copytree(fixture, src)
+    out = tmp_path / "mixed"
+    job = {"inputs": {"input": str(src)}, "params": {"seed": 1}, "outputs": {"object": str(out)}}
+    subprocess.run(
+        [sys.executable, str(TOOLS["mix_batches"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    assert sorted(p.name for p in out.iterdir()) == sorted(p.name for p in src.iterdir())
+    with open(src / "batch_assessment.csv", newline="") as f:
+        before = list(csv.DictReader(f))
+    with open(out / "batch_assessment.csv", newline="") as f:
+        after = list(csv.DictReader(f))
+    assert len(after) == len(before)
+    assert [r["cluster"] for r in after] == [r["cluster"] for r in before]
+    assert all(float(r["batch_excess"]) == 0.0 for r in after)
+    assert all(r["flagged"] == "FALSE" for r in after)
+    with open(out / "batch_overview.csv", newline="") as f:
+        ov = next(iter(csv.DictReader(f)))
+    assert abs(float(ov["knn_same_batch_excess_overall"])) < 0.06
+    assert ov["rule_suspected"] == "false" and ov["n_clusters_flagged"] == "0"
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert "mix_batches seed=1" in manifest["source"]
+    assert manifest["summary"]["suspected"] is False

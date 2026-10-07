@@ -70,6 +70,7 @@ TOOLS = {
         "extract_cluster_evidence",
         "extract_batch_evidence",
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
+        "mix_batches",  # negative-control generator for assess-batch: removes the slide structure of a batch_evidence dir
     )
 }
 # the one R tool: the engine dispatches `.R` scripts through Rscript inside the module's env

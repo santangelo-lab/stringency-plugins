@@ -43,6 +43,9 @@ for the redesigned outlier judgment, in which reviewer agents reason from direct
 departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
 the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.
 
+Version 0.4.1 (2026-10-07): generator tool `mix_batches`, the negative control of `assess-batch` (removes the
+slide structure of a `batch_evidence` directory; source documented in the method's `modules/assess-batch/controls/`).
+
 Version 0.4.0 (2026-10-07, afternoon): batch effect assessment is a judgment step of `xenium-upstream`
 (owner decision): operation `assess_batch`; object type `batch_evidence` with
 `tools/extract_batch_evidence.py`; vocabulary `batch_route@1` (`proceed_uncorrected`, `correct_batch`,
