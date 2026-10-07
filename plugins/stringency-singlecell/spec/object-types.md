@@ -1,4 +1,4 @@
-# Object types (design 4.2), `stringency-singlecell` 0.1.0
+# Object types (design 4.2), `stringency-singlecell` 0.3.0
 
 Every extractor is a standalone script under `tools/`, run as `python3 <script> <path>
 <design.json>` (or `Rscript <script> ...` for `extract_seurat.R`; the executor dispatches by suffix) inside the module environment; shared parsing is in `tools/_xenium_common.py`,
@@ -15,6 +15,7 @@ are stdlib.
 | `qc_object_set` | `sc.qc_object_set@1` | dir with `qc_summary.json` | cells after QC | `punch_ids` | output of `qc-cells` |
 | `anndata` | `sc.anndata@1` | `.h5ad` | cells | obs columns | later modules |
 | `seurat_object` | `sc.seurat_object@1` | `.rds` (Seurat v5) | cells | meta.data columns, reductions as `obsm` (`spatial` when any FOV has coordinates), layers, `uns_flags` from `obj@misc$stringency` | the R pipeline's objects (0.2.0, Lane F); extractor `tools/extract_seurat.R`, run as `Rscript` inside the module's image; same envelope keys as `anndata` so predicates stay object-agnostic |
+| `cluster_evidence` | `sc.cluster_evidence@1` | dir with `manifest.json` | cells (manifest) | `columns` of `cluster_summary.csv`, `cluster_ids` | the tables the annotation judgment reads, written by `find-markers` (0.3.0, Lane F); contract below |
 
 `fields.columns` is set only on `tma_layout`, deliberately: `init.column_missing` checks every
 design column against every object input that reports `columns`, and the design's columns
@@ -64,3 +65,22 @@ The extractor recomputes `verified_by_extractor`: true only if `verified`, an ac
 `n_cells_checked == n_cells`, and `n_cells == sum(n_before)`. `sc.area_join_unverified` blocks
 on anything less. `included: false` marks punches the histology review excluded; the flag
 predicates skip them.
+
+## `cluster_evidence`
+
+Written by the method's `find-markers` module after clustering, read by `annotate-clusters`
+(the judgment's `pre.py` turns it into evidence tables) and by `upstream-report`. One directory:
+
+| file | content |
+|---|---|
+| `manifest.json` | `{"cluster_evidence": 1, organ, species, panel: {n_genes}, clustering_column, resolution, n_clusters, n_cells, punches: [...], timepoint_levels: [...], batch_key, normalisation}` |
+| `cluster_summary.csv` | one row per cluster: `cluster, n_cells, pct_cells, median_counts, median_genes, median_cell_area, n_punches, max_punch, max_punch_pct, dominant_timepoint, pct_tp_<level>` per time point level, `max_slide_pct, dominant_slide, top_markers, batch_flag` |
+| `composition_by_punch.csv`, `composition_by_animal.csv`, `composition_by_timepoint.csv`, `composition_by_slide.csv` | wide counts, `cluster` first column |
+| `markers.csv` | `cluster, gene, avg_log2FC, pct_in, pct_out, pct_diff, p_val, p_val_adj` (FindAllMarkers) |
+| `markers_top.csv` | `cluster, rank, gene, avg_log2FC, pct_in, pct_out, pct_diff`, the top `top_n` per cluster |
+| `cluster_avg_expression.csv`, `cluster_pct_expressing.csv` | `gene` first column, one column per cluster id |
+| `batch_assessment.csv` | per cluster, what `misc$stringency$batch_assessment` summarises |
+
+The extractor (stdlib) refuses a directory without `manifest.json` (contract version 1) or
+`cluster_summary.csv`; `domain.files_missing` lists any other file absent so a predicate or the
+report can say what the evidence lacked.

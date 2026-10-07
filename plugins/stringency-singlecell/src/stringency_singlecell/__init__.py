@@ -3,8 +3,9 @@
 Object types: `xenium_bundle` (a region bundle), `punch_coordinates` (the hand-drawn selections),
 `tma_layout` (the transcribed TMA map), `punch_bundle_set` (one bundle per punch after the
 split), `qc_object_set` (QC'd objects plus `qc_summary.json`), `anndata` (an h5ad object) and
-`seurat_object` (a Seurat v5 `.rds`, read by an R extractor inside the module's image; 0.2.0).
-Operations `split_punches` and `qc_cells` are typed; the later ones are provisional.
+`seurat_object` (a Seurat v5 `.rds`, read by an R extractor inside the module's image; 0.2.0) and
+`cluster_evidence` (the tables the annotation judgment reads; 0.3.0). The QC and upstream
+operations are typed; the niche, DE and report ones are provisional.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -49,6 +50,7 @@ OBJECT_TYPES = {
     "anndata": _ot("anndata", "extract_anndata"),
     "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
     "seurat_object": _ot("seurat_object", "extract_seurat"),
+    "cluster_evidence": _ot("cluster_evidence", "extract_cluster_evidence"),
 }
 
 TOOLS = {
@@ -63,6 +65,7 @@ TOOLS = {
         "combine_coordinates",
         "flatten_metrics",
         "extract_qc_metrics_table",
+        "extract_cluster_evidence",
     )
 }
 # the one R tool: the engine dispatches `.R` scripts through Rscript inside the module's env

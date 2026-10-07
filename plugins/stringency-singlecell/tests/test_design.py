@@ -116,4 +116,18 @@ def test_plugin_surface() -> None:
         "spatial.coords_missing",
         "sc.exclusion_proposed",
         "sc.export_mismatch",
+        "sc.decision_unreviewed",
+        "sc.batch_effect_suspected",
+        "sc.unknown_fraction",
+        "qc.filter_ordering",
     }
+    assert "reduce_cluster" not in p.operations
+    assert validate({"integration": "harmony", "n_features": 2000}, OPERATIONS["reduce_pca"]) == []
+    assert validate({"integration": "mnn"}, OPERATIONS["reduce_pca"])
+    assert (
+        validate(
+            {"ndim": 35, "resolution": 0.4, "resolutions": [0.2, 0.4]}, OPERATIONS["cluster_umap"]
+        )
+        == []
+    )
+    assert validate({"anything": 1}, OPERATIONS["annotate_clusters"])

@@ -10,6 +10,7 @@ from typing import Any
 from stringency import hashing
 from stringency.actions import Action
 from stringency.config import Design, Objective
+from stringency.modules import ModuleManifest
 from stringency.policy import Policy, ProfilePolicy
 from stringency.predicates.context import GateContext, OutputBundle, ProjectConfig
 from stringency.state import ObjectState, State, StepRecord
@@ -58,7 +59,15 @@ def obj(type_: str, summary: dict[str, Any]) -> ObjectState:
     )
 
 
-def action(operation: str, step: str = "01_step", **params: Any) -> Action:
+def action(
+    operation: str,
+    step: str = "01_step",
+    sources: dict[str, str] | None = None,
+    rationale_ref: str | None = None,
+    **params: Any,
+) -> Action:
+    """`sources` names, per parameter, `default`, `agent` or `fork`; the rest default."""
+    src = {k: (sources or {}).get(k, "default") for k in params}
     return Action(
         action_id="A",
         run_id="RUN",
@@ -67,11 +76,33 @@ def action(operation: str, step: str = "01_step", **params: Any) -> Action:
         operation=operation,
         module=f"{operation.replace('_', '-')}@0.1.0",
         parameters=dict(params),
-        param_source={k: "default" for k in params},
+        param_source=src,
         inputs={},
         input_digest="blake3:" + "00" * 32,
         params_hash="blake3:" + "00" * 32,
-        proposed_by="pipeline",
+        proposed_by="agent" if "agent" in src.values() else "pipeline",
+        rationale_ref=rationale_ref,
+    )
+
+
+def manifest(
+    operation: str,
+    decision_points: tuple[str, ...] = (),
+    defaults: dict[str, Any] | None = None,
+) -> ModuleManifest:
+    """A module manifest for `operation` (named like `action()` names it) whose params schema
+    carries `defaults` and whose decision points are `decision_points`."""
+    props = {k: {"type": "number", "default": v} for k, v in (defaults or {}).items()}
+    return ModuleManifest(
+        contract=1,
+        name=operation.replace("_", "-"),
+        version="0.1.0",
+        kind="deterministic",
+        operation=operation,
+        domain="stringency-singlecell",
+        env="xenium-r",
+        decision_points=list(decision_points),
+        params_schema={"type": "object", "properties": props},
     )
 
 
@@ -84,15 +115,17 @@ def ctx(
     ranges: dict[str, dict[str, list[float]]] | None = None,
     history: tuple[StepRecord, ...] = (),
     output: OutputBundle | None = None,
+    act: Action | None = None,
+    module: ModuleManifest | None = None,
     **params: Any,
 ) -> GateContext:
     design = Design.model_validate(DESIGN)
     objective = Objective.model_validate(OBJECTIVE)
-    act = action(operation, **params)
+    act = act or action(operation, **params)
     pc = ProjectConfig(
         config=_Cfg(profile=profile),  # type: ignore[arg-type]
         pipeline=None,  # type: ignore[arg-type]
-        modules={},
+        modules={module.ref: module} if module is not None else {},
         inputs=None,  # type: ignore[arg-type]
         object_types=(
             "xenium_bundle",

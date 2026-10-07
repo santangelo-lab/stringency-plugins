@@ -35,10 +35,19 @@ Version 0.2.0 (2026-10-06, Lane F): object type `seurat_object` with the R extra
 `tools/extract_seurat.R` (the engine runs it as `Rscript` inside the module's image and it prints
 the same envelope keys as the `anndata` extractor, with `uns_flags` read from `obj@misc$stringency`);
 predicate `sc.export_mismatch` (block) on `export_h5ad`; typed operations `merge_objects`,
-`normalize`, `reduce_cluster`, `find_markers`, `export_h5ad`. The downstream pilot is in R
+`normalize`, `find_markers`, `export_h5ad` (`reduce_cluster` was replaced in 0.3.0). The downstream pilot is in R
 (owner decision 1, 2026-10-06; engine repo `spec/plans/spatial-method-plan.md` section 5).
 
 Version 0.1.8 (2026-09-21): vocabulary `punch_qc_verdict@2` (`keep`, `review`, `already_excluded`)
 for the redesigned outlier judgment, in which reviewer agents reason from direction-aware band
 departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
 the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.
+
+Version 0.3.0 (2026-10-07, Lane F, the `xenium-upstream` pipeline): typed operations `reduce_pca`
+(with `integration` none | harmony | rpca | cca), `cluster_umap`, `find_markers` extended,
+`annotate_clusters`, `apply_labels`, `report_upstream`; object type `cluster_evidence` with
+`tools/extract_cluster_evidence.py`; predicates `sc.decision_unreviewed` (a person signs off on
+every decision point, even at the pipeline default; owner decision 2026-10-07),
+`sc.batch_effect_suspected` (names the fork route with Harmony), `sc.unknown_fraction` and
+`qc.filter_ordering`; vocabulary `cell_types_mouse@1` (43 labels for the four Lyons organs, a
+draft for the owner's approval, with Cell Ontology ids in `terms`).

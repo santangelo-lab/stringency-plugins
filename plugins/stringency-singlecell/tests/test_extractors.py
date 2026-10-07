@@ -406,3 +406,53 @@ def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
     assert "cell_area" in env["fields"]["obs"] and "counts" in env["fields"]["layers"]
     assert env["fields"]["uns_flags"]["normalisation"]["method"] == "logarea"
     assert env["counts_per_group"]["timepoint_h"]["6"]["observation"] == 5
+
+
+def test_cluster_evidence_extractor(tmp_path: Path, design_json: Path) -> None:
+    import csv
+
+    root = tmp_path / "cluster_evidence"
+    root.mkdir()
+    (root / "manifest.json").write_text(
+        json.dumps(
+            {
+                "cluster_evidence": 1,
+                "organ": "liver",
+                "species": "mouse",
+                "panel": {"n_genes": 5106},
+                "clustering_column": "Xenium_snn_res.0.4",
+                "resolution": 0.4,
+                "n_clusters": 2,
+                "n_cells": 103127,
+                "punches": ["6-1-Liver", "24-1-Liver"],
+                "timepoint_levels": ["6", "24", "48"],
+                "batch_key": "slide",
+                "normalisation": {"method": "logarea", "scale_factor": 100},
+            }
+        )
+    )
+    with open(root / "cluster_summary.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["cluster", "n_cells", "pct_cells", "top_markers"])
+        w.writeheader()
+        w.writerow(
+            {"cluster": "0", "n_cells": 60000, "pct_cells": 58.2, "top_markers": "Apoa1;Apob"}
+        )
+        w.writerow({"cluster": "1", "n_cells": 43127, "pct_cells": 41.8, "top_markers": "Cdh5;Kdr"})
+    env = run_tool("extract_cluster_evidence", root, design_json)
+    assert env["extractor"] == "sc.cluster_evidence@1" and env["type"] == "cluster_evidence"
+    assert env["n_obs"] == 103127 and env["n_var"] == 5106
+    assert env["fields"]["columns"][0] == "cluster" and env["domain"]["cluster_ids"] == ["0", "1"]
+    assert env["domain"]["n_cells_in_summary"] == 103127 and env["domain"]["organ"] == "liver"
+    assert "markers.csv" in env["domain"]["files_missing"]
+    # a directory without the manifest is refused
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    (bare / "cluster_summary.csv").write_text("cluster,n_cells\n0,1\n")
+    script = TOOLS["extract_cluster_evidence"].script
+    res = subprocess.run(
+        [sys.executable, str(script), str(bare), str(design_json)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res.returncode == 1 and "manifest.json" in res.stderr

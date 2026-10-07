@@ -1,0 +1,106 @@
+# cell_types_mouse@1: the closed label set of the cluster-annotation judgment (annotate_clusters)
+# for the four Lyons CLP organs: liver, spleen, lung, small intestine. One list for all four so a
+# cluster of lymphoid or myeloid cells gets the same label in every organ and the cross-organ
+# tables join on it (Lane F plan, phase 7). Labels are at the level ROSC_MTA2's collapse map calls
+# the collapsed cell type; a reviewer's finer reading goes in the judgment's free-text
+# `fine_label`, not in the label.
+#
+# DRAFT by the agent (Lane F, 2026-10-07) for the owner's approval (Lane F plan section 8,
+# decision 5: agent-drafted Cell Ontology vocabularies). `terms` gives the Cell Ontology id and
+# name each label stands for; the engine reads only `labels`.
+#
+# Reviewer labels that are not cell types:
+#   mixed_doublet  a cluster whose markers are two lineages' at once (segmentation spill-over in
+#                  Xenium rather than true doublets); a person decides whether to subcluster
+#   low_quality    a cluster held together by low counts or low genes rather than by markers
+#   unknown        the evidence does not support any label in this list
+name: cell_types_mouse
+version: 1
+labels:
+  - hepatocyte
+  - cholangiocyte
+  - hepatic_stellate_cell
+  - kupffer_cell
+  - enterocyte
+  - goblet_cell
+  - paneth_cell
+  - enteroendocrine_cell
+  - tuft_cell
+  - intestinal_stem_cell
+  - alveolar_type1
+  - alveolar_type2
+  - club_cell
+  - ciliated_cell
+  - basal_cell
+  - mesothelial_cell
+  - endothelial
+  - lymphatic_endothelial
+  - fibroblast
+  - smooth_muscle
+  - pericyte
+  - enteric_glia
+  - enteric_neuron
+  - stromal_reticular_cell
+  - alveolar_macrophage
+  - red_pulp_macrophage
+  - macrophage
+  - monocyte
+  - neutrophil
+  - dendritic_cell
+  - plasmacytoid_dc
+  - mast_cell
+  - t_cell
+  - nk_cell
+  - ilc
+  - b_cell
+  - germinal_center_b_cell
+  - plasma_cell
+  - erythroid
+  - megakaryocyte
+  - mixed_doublet
+  - low_quality
+  - unknown
+terms:
+  hepatocyte:             {cl_id: "CL:0000182", name: hepatocyte}
+  cholangiocyte:          {cl_id: "CL:1000488", name: cholangiocyte}
+  hepatic_stellate_cell:  {cl_id: "CL:0000632", name: hepatic stellate cell}
+  kupffer_cell:           {cl_id: "CL:0000091", name: Kupffer cell}
+  enterocyte:             {cl_id: "CL:0000584", name: enterocyte}
+  goblet_cell:            {cl_id: "CL:0000160", name: goblet cell}
+  paneth_cell:            {cl_id: "CL:0000510", name: paneth cell}
+  enteroendocrine_cell:   {cl_id: "CL:0000164", name: enteroendocrine cell}
+  tuft_cell:              {cl_id: "CL:0002204", name: brush cell}
+  intestinal_stem_cell:   {cl_id: "CL:0009016", name: intestinal crypt stem cell}
+  alveolar_type1:         {cl_id: "CL:0002062", name: pulmonary alveolar type 1 cell}
+  alveolar_type2:         {cl_id: "CL:0002063", name: pulmonary alveolar type 2 cell}
+  club_cell:              {cl_id: "CL:0000158", name: club cell}
+  ciliated_cell:          {cl_id: "CL:0005012", name: multi-ciliated epithelial cell}
+  basal_cell:             {cl_id: "CL:0000646", name: basal cell}
+  mesothelial_cell:       {cl_id: "CL:0000077", name: mesothelial cell}
+  endothelial:            {cl_id: "CL:0000115", name: endothelial cell}
+  lymphatic_endothelial:  {cl_id: "CL:0002138", name: endothelial cell of lymphatic vessel}
+  fibroblast:             {cl_id: "CL:0000057", name: fibroblast}
+  smooth_muscle:          {cl_id: "CL:0000192", name: smooth muscle cell}
+  pericyte:               {cl_id: "CL:0000669", name: pericyte}
+  enteric_glia:           {cl_id: "CL:0002481", name: peripheral neuroglial cell (enteric glia)}
+  enteric_neuron:         {cl_id: "CL:0007011", name: enteric neuron}
+  stromal_reticular_cell: {cl_id: "CL:0000432", name: reticular cell}
+  alveolar_macrophage:    {cl_id: "CL:0000583", name: alveolar macrophage}
+  red_pulp_macrophage:    {cl_id: "CL:0000869", name: splenic red pulp macrophage}
+  macrophage:             {cl_id: "CL:0000235", name: macrophage}
+  monocyte:               {cl_id: "CL:0000576", name: monocyte}
+  neutrophil:             {cl_id: "CL:0000775", name: neutrophil}
+  dendritic_cell:         {cl_id: "CL:0000451", name: dendritic cell}
+  plasmacytoid_dc:        {cl_id: "CL:0000784", name: plasmacytoid dendritic cell}
+  mast_cell:              {cl_id: "CL:0000097", name: mast cell}
+  t_cell:                 {cl_id: "CL:0000084", name: T cell}
+  nk_cell:                {cl_id: "CL:0000623", name: natural killer cell}
+  ilc:                    {cl_id: "CL:0001065", name: innate lymphoid cell}
+  b_cell:                 {cl_id: "CL:0000236", name: B cell}
+  germinal_center_b_cell: {cl_id: "CL:0000844", name: germinal center B cell}
+  plasma_cell:            {cl_id: "CL:0000786", name: plasma cell}
+  erythroid:              {cl_id: "CL:0000764", name: erythroid lineage cell}
+  megakaryocyte:          {cl_id: "CL:0000556", name: megakaryocyte}
+  mixed_doublet:          {cl_id: null, name: not a cell type (two lineages' markers at once)}
+  low_quality:            {cl_id: null, name: not a cell type (held together by low counts)}
+  unknown:                {cl_id: null, name: no label in this list is supported}

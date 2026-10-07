@@ -11,11 +11,13 @@ from stringency.predicates.context import OutputBundle
 
 from tests.helpers import (
     LIVER_0076570,
+    action,
     bundle_summary,
     coords_summary,
     ctx,
     join_ok,
     layout_summary,
+    manifest,
     obj,
     punch,
     qc_summary,
@@ -45,8 +47,15 @@ def _seurat(
     obs: tuple[str, ...] = ("punch_id", "animal", "timepoint_h", "cell_type"),
     spatial: bool = True,
     label: str | None = "cell_type",
+    flags: dict | None = None,
+    unknown_fraction: float = 0.0,
 ) -> dict:
     """A seurat_object envelope as tools/extract_seurat.R prints it (Lane F plan 5.0)."""
+    labels = (
+        {"column": label, "vocabulary": "cell_types_mouse@1", "unknown_fraction": unknown_fraction}
+        if label
+        else None
+    )
     return {
         "extractor": "sc.seurat_object@1",
         "type": "seurat_object",
@@ -58,15 +67,38 @@ def _seurat(
             "layers": ["counts", "data"],
             "uns_flags": {
                 "normalisation": {"method": "logarea", "scale_factor": 100},
-                "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None,
+                "labels": labels,
+                **(flags or {}),
             },
         },
         "counts_per_group": {},
-        "domain": {
-            "assay": "Xenium",
-            "labels": {"column": label, "vocabulary": "cell_types_liver@1"} if label else None,
-        },
+        "domain": {"assay": "Xenium", "labels": labels},
     }
+
+
+NORM = manifest("normalize", ("method", "scale_factor"), {"method": "logarea", "scale_factor": 100})
+
+
+def _decision(sources: dict[str, str], **params) -> GateContext:
+    """A normalize step whose decision points come from `sources` (default | agent | fork)."""
+    values = {"method": "logarea", "scale_factor": 100, **params}
+    return ctx(
+        "normalize",
+        {},
+        act=action("normalize", sources=sources, rationale_ref="blake3:ab", **values),
+        module=NORM,
+    )
+
+
+BATCH_SUSPECT = {
+    "suspected": True,
+    "rule": "knn_same_slide_excess_24h > 0.25 in clusters holding > 5% of cells",
+    "batch_key": "slide",
+    "n_clusters": 20,
+    "n_clusters_single_batch_mixed_timepoint": 4,
+    "knn_same_batch_excess_24h": 0.41,
+}
+BATCH_CLEAR = {**BATCH_SUSPECT, "suspected": False, "knn_same_batch_excess_24h": 0.03}
 
 
 def _anndata(
@@ -97,6 +129,61 @@ def _export(parent: dict, out: dict) -> dict:
 
 # (predicate id, must-fire ctx, must-pass ctx)
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    (
+        "sc.decision_unreviewed",
+        # the operator proposed the pipeline default with a reason: a person still signs off
+        lambda: _decision({"method": "agent", "scale_factor": "default"}),
+        # the operator departed from the default: param.agent_proposed holds instead
+        lambda: _decision({"method": "agent"}, method="log_total"),
+    ),
+    (
+        "sc.batch_effect_suspected",
+        lambda: ctx(
+            "cluster_umap",
+            {"obj": obj("seurat_object", _seurat(flags={"batch_assessment": BATCH_SUSPECT}))},
+            phase="post",
+        ),
+        lambda: ctx(
+            "cluster_umap",
+            {"obj": obj("seurat_object", _seurat(flags={"batch_assessment": BATCH_CLEAR}))},
+            phase="post",
+        ),
+    ),
+    (
+        "sc.unknown_fraction",
+        lambda: ctx(
+            "apply_labels",
+            {"obj": obj("seurat_object", _seurat(unknown_fraction=0.31))},
+            phase="post",
+        ),
+        lambda: ctx(
+            "apply_labels",
+            {"obj": obj("seurat_object", _seurat(unknown_fraction=0.05))},
+            phase="post",
+        ),
+    ),
+    (
+        "qc.filter_ordering",
+        lambda: ctx(
+            "normalize",
+            {
+                "obj": obj(
+                    "seurat_object",
+                    _seurat(
+                        flags={
+                            "normalisation": {
+                                "method": "logarea",
+                                "scale_factor": 100,
+                                "cells_filtered_after": True,
+                            }
+                        }
+                    ),
+                )
+            },
+            phase="post",
+        ),
+        lambda: ctx("normalize", {"obj": obj("seurat_object", _seurat())}, phase="post"),
+    ),
     (
         "sc.export_mismatch",
         lambda: ctx(
@@ -212,6 +299,47 @@ def test_every_plugin_predicate_has_a_case() -> None:
 
 
 # --- coords_missing, the other ways it fires ------------------------------------------------
+
+
+def test_decision_unreviewed_the_other_cases() -> None:
+    fn = registry.get("sc.decision_unreviewed").fn  # type: ignore[union-attr]
+    # nobody proposed anything: the defaults were taken silently, a person signs off
+    v = fn(_decision({}))
+    assert v.fired and v.evidence["rationale_ref"] == "blake3:ab"
+    assert v.evidence["decision_points"]["method"] == {
+        "default": "logarea",
+        "value": "logarea",
+        "source": "default",
+    }
+    # every decision point is a fork's --set: a person's recorded decision, nothing opens
+    assert not fn(_decision({"method": "fork", "scale_factor": "fork"}, method="log_total")).fired
+    # one fork value and one silent default: the default still needs a sign-off
+    assert fn(_decision({"method": "fork"}, method="log_total")).fired
+    # a module without decision points opens nothing
+    plain = manifest("normalize", (), {"method": "logarea"})
+    assert not fn(
+        ctx("normalize", {}, act=action("normalize", method="logarea"), module=plain)
+    ).fired
+
+
+def test_unknown_fraction_reads_the_policy_ceiling() -> None:
+    fn = registry.get("sc.unknown_fraction").fn  # type: ignore[union-attr]
+    strict = {"sc.unknown_fraction": {"strict": [0, 0.1], "standard": [0, 0.2], "wide": [0, 0.4]}}
+    c = ctx(
+        "apply_labels",
+        {"obj": obj("seurat_object", _seurat(unknown_fraction=0.15))},
+        phase="post",
+        ranges=strict,
+    )
+    assert not fn(c).fired
+    c = ctx(
+        "apply_labels",
+        {"obj": obj("seurat_object", _seurat(unknown_fraction=0.15))},
+        phase="post",
+        profile="strict",
+        ranges=strict,
+    )
+    assert fn(c).fired
 
 
 def test_coords_missing_no_input_or_empty() -> None:

@@ -101,18 +101,50 @@ OPERATIONS["normalize"] = {
     },
     "additionalProperties": False,
 }
-OPERATIONS["reduce_cluster"] = {
+OPERATIONS["reduce_pca"] = {
     "type": "object",
     "properties": {
-        "n_features": {**_INT, "description": "variable features"},
-        "ndim": {**_INT, "description": "principal components used for the graph"},
+        "n_features": {**_INT, "description": "variable features kept for scaling and PCA"},
+        "npcs": {
+            **_INT,
+            "description": "principal components computed (the elbow table covers them all)",
+        },
+        "integration": {
+            "type": "string",
+            "enum": ["none", "harmony", "rpca", "cca"],
+            "description": (
+                "batch integration after PCA; none first, a fork sets harmony when the "
+                "clustering shows batch structure (owner, 2026-10-07)"
+            ),
+        },
+        "batch_key": {
+            "type": "string",
+            "description": "meta.data column the integration corrects over (the design's batch)",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["cluster_umap"] = {
+    "type": "object",
+    "properties": {
+        "ndim": {
+            **_INT,
+            "description": "principal (or integrated) components used for the graph and UMAP",
+        },
+        "resolution": {
+            **_NUM,
+            "description": "the Louvain resolution whose clusters become the identity",
+        },
         "resolutions": {
             "type": "array",
             "items": _NUM,
-            "description": "Louvain resolutions computed",
+            "description": "every resolution computed (clustree, cluster counts)",
         },
-        "resolution": {**_NUM, "description": "the resolution whose clusters become the identity"},
-        "seed": {**_INT, "description": "random seed"},
+        "k_neighbors": {**_INT, "description": "k of the shared nearest-neighbour graph"},
+        "algorithm": {**_INT, "description": "Seurat FindClusters algorithm (1 Louvain, 4 Leiden)"},
+        "umap_n_neighbors": {**_INT, "description": "uwot n_neighbors"},
+        "umap_min_dist": {**_NUM, "minimum": 0, "description": "uwot min_dist"},
+        "seed": {**_INT, "description": "random seed set before every stochastic call"},
     },
     "additionalProperties": False,
 }
@@ -127,9 +159,23 @@ OPERATIONS["find_markers"] = {
             "description": "minimum fraction of cells expressing",
         },
         "test": {"type": "string", "description": "Seurat test name"},
+        "max_cells_per_ident": {
+            **_INT,
+            "description": "cells sampled per cluster for the test (seeded)",
+        },
+        "only_pos": {"type": "boolean", "description": "report positive markers only"},
+        "top_n": {**_INT, "description": "markers kept per cluster in markers_top"},
     },
     "additionalProperties": False,
 }
+# The annotation judgment, the label application and the upstream report take no parameters.
+OPERATIONS["annotate_clusters"] = {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": False,
+}
+OPERATIONS["apply_labels"] = {"type": "object", "properties": {}, "additionalProperties": False}
+OPERATIONS["report_upstream"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["export_h5ad"] = {"type": "object", "properties": {}, "additionalProperties": False}
 OPERATIONS["flag_outlier_punches"] = {
     "type": "object",
@@ -143,7 +189,6 @@ OPERATIONS.update(
         for op in (
             "select_hvg",
             "cluster",
-            "annotate_clusters",
             "spatial_neighborhood",
             "characterise_niches",
             "test_differential_expression",
