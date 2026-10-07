@@ -1,4 +1,4 @@
-# Object types (design 4.2), `stringency-singlecell` 0.3.0
+# Object types (design 4.2), `stringency-singlecell` 0.3.1
 
 Every extractor is a standalone script under `tools/`, run as `python3 <script> <path>
 <design.json>` (or `Rscript <script> ...` for `extract_seurat.R`; the executor dispatches by suffix) inside the module environment; shared parsing is in `tools/_xenium_common.py`,
@@ -15,7 +15,7 @@ are stdlib.
 | `qc_object_set` | `sc.qc_object_set@1` | dir with `qc_summary.json` | cells after QC | `punch_ids` | output of `qc-cells` |
 | `anndata` | `sc.anndata@1` | `.h5ad` | cells | obs columns | later modules |
 | `seurat_object` | `sc.seurat_object@1` | `.rds` (Seurat v5) | cells | meta.data columns, reductions as `obsm` (`spatial` when any FOV has coordinates), layers, `uns_flags` from `obj@misc$stringency` | the R pipeline's objects (0.2.0, Lane F); extractor `tools/extract_seurat.R`, run as `Rscript` inside the module's image; same envelope keys as `anndata` so predicates stay object-agnostic |
-| `cluster_evidence` | `sc.cluster_evidence@1` | dir with `manifest.json` | cells (manifest) | `columns` of `cluster_summary.csv`, `cluster_ids` | the tables the annotation judgment reads, written by `find-markers` (0.3.0, Lane F); contract below |
+| `cluster_evidence` | `sc.cluster_evidence@1` | dir with `manifest.json` | cells (manifest) | `summary_columns` of `cluster_summary.csv` (not `columns`, which would make `init.column_missing` check the design columns against it), `cluster_ids` | the tables the annotation judgment reads, written by `find-markers` (0.3.0, Lane F); contract below |
 
 `fields.columns` is set only on `tma_layout`, deliberately: `init.column_missing` checks every
 design column against every object input that reports `columns`, and the design's columns

@@ -19,7 +19,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -66,6 +66,7 @@ TOOLS = {
         "flatten_metrics",
         "extract_qc_metrics_table",
         "extract_cluster_evidence",
+        "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
     )
 }
 # the one R tool: the engine dispatches `.R` scripts through Rscript inside the module's env

@@ -43,6 +43,8 @@ for the redesigned outlier judgment, in which reviewer agents reason from direct
 departures and a guide instead of applying a lookup rule, and never exclude; v1 stays loaded for
 the record of the rejected Lyons CLP run. `sc.exclusion_proposed` fires on `review` as before.
 
+Version 0.3.1 (2026-10-07): tool `shuffle_markers` (the negative-control generator of `annotate-clusters`); the `cluster_evidence` extractor reports `summary_columns`, not `columns`.
+
 Version 0.3.0 (2026-10-07, Lane F, the `xenium-upstream` pipeline): typed operations `reduce_pca`
 (with `integration` none | harmony | rpca | cca), `cluster_umap`, `find_markers` extended,
 `annotate_clusters`, `apply_labels`, `report_upstream`; object type `cluster_evidence` with

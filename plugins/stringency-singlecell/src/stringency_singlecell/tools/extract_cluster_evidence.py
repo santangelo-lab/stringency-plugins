@@ -3,8 +3,8 @@
 method's `find-markers` module writes for the annotation judgment (`manifest.json`,
 `cluster_summary.csv`, the composition tables, `markers.csv`, `markers_top.csv`,
 `cluster_avg_expression.csv`, `cluster_pct_expressing.csv`, `batch_assessment.csv`). stdlib only.
-Envelope: n_obs = cells (manifest), n_var = panel genes (manifest), fields.columns = the
-cluster_summary columns, domain = organ, clustering column and resolution, cluster ids, files
+Envelope: n_obs = cells (manifest), n_var = panel genes (manifest), fields.summary_columns = the
+cluster_summary columns (not `columns`: `init.column_missing` checks design columns against any object reporting that key), domain = organ, clustering column and resolution, cluster ids, files
 present. Refuses a directory without `manifest.json` or `cluster_summary.csv`.
 
 Usage: extract_cluster_evidence.py <dir> <design.json>
@@ -67,7 +67,7 @@ def main() -> int:
         "type": "cluster_evidence",
         "n_obs": manifest.get("n_cells"),
         "n_var": panel.get("n_genes"),
-        "fields": {"columns": cols, "cluster_ids": cluster_ids},
+        "fields": {"summary_columns": cols, "cluster_ids": cluster_ids},
         "counts_per_group": {},
         "domain": {
             "organ": manifest.get("organ"),

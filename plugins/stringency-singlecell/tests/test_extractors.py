@@ -441,7 +441,10 @@ def test_cluster_evidence_extractor(tmp_path: Path, design_json: Path) -> None:
     env = run_tool("extract_cluster_evidence", root, design_json)
     assert env["extractor"] == "sc.cluster_evidence@1" and env["type"] == "cluster_evidence"
     assert env["n_obs"] == 103127 and env["n_var"] == 5106
-    assert env["fields"]["columns"][0] == "cluster" and env["domain"]["cluster_ids"] == ["0", "1"]
+    assert env["fields"]["summary_columns"][0] == "cluster" and env["domain"]["cluster_ids"] == [
+        "0",
+        "1",
+    ]
     assert env["domain"]["n_cells_in_summary"] == 103127 and env["domain"]["organ"] == "liver"
     assert "markers.csv" in env["domain"]["files_missing"]
     # a directory without the manifest is refused
@@ -456,3 +459,80 @@ def test_cluster_evidence_extractor(tmp_path: Path, design_json: Path) -> None:
         check=False,
     )
     assert res.returncode == 1 and "manifest.json" in res.stderr
+
+
+def test_shuffle_markers_tool(tmp_path: Path) -> None:
+    """The negative-control generator permutes gene symbols across the marker and expression
+    tables of a cluster_evidence directory and rewrites top_markers; shapes are unchanged."""
+    import csv
+    import subprocess
+    import sys
+
+    from stringency_singlecell import TOOLS
+
+    src = tmp_path / "ev"
+    src.mkdir()
+    genes = [f"G{i}" for i in range(40)]
+    (src / "manifest.json").write_text(json.dumps({"cluster_evidence": 1, "n_clusters": 2}))
+
+    def write(name: str, fields: list[str], rows: list[dict]) -> None:
+        with open(src / name, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
+
+    top = [
+        {"cluster": str(c), "rank": str(r + 1), "gene": genes[c * 20 + r], "avg_log2FC": "1.0"}
+        for c in range(2)
+        for r in range(10)
+    ]
+    write("markers_top.csv", ["cluster", "rank", "gene", "avg_log2FC"], top)
+    write(
+        "markers.csv",
+        ["cluster", "gene", "avg_log2FC"],
+        [{k: v for k, v in r.items() if k != "rank"} for r in top],
+    )
+    write(
+        "cluster_avg_expression.csv",
+        ["gene", "0", "1"],
+        [{"gene": g, "0": "1", "1": "0"} for g in genes],
+    )
+    write(
+        "cluster_pct_expressing.csv",
+        ["gene", "0", "1"],
+        [{"gene": g, "0": "0.5", "1": "0.1"} for g in genes],
+    )
+    write(
+        "cluster_summary.csv",
+        ["cluster", "n_cells", "top_markers"],
+        [
+            {"cluster": "0", "n_cells": "10", "top_markers": "x"},
+            {"cluster": "1", "n_cells": "20", "top_markers": "y"},
+        ],
+    )
+    out = tmp_path / "generated"
+    job = {"inputs": {"input": str(src)}, "params": {"seed": 3}, "outputs": {"object": str(out)}}
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_markers"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    with open(out / "markers_top.csv", newline="") as f:
+        shuffled = list(csv.DictReader(f))
+    assert len(shuffled) == len(top) and [r["cluster"] for r in shuffled] == [
+        r["cluster"] for r in top
+    ]
+    assert sorted(r["gene"] for r in shuffled) == sorted(r["gene"] for r in top)
+    assert sum(a["gene"] != b["gene"] for a, b in zip(shuffled, top, strict=True)) > 5
+    with open(out / "cluster_avg_expression.csv", newline="") as f:
+        avg = list(csv.DictReader(f))
+    assert len(avg) == 40 and list(avg[0].keys()) == ["gene", "0", "1"]
+    with open(out / "cluster_summary.csv", newline="") as f:
+        summ = {r["cluster"]: r["top_markers"] for r in csv.DictReader(f)}
+    first = {}
+    for r in sorted(shuffled, key=lambda r: (r["cluster"], int(r["rank"]))):
+        first.setdefault(r["cluster"], []).append(r["gene"])
+    assert summ["0"] == ";".join(first["0"][:8]) and summ["1"] == ";".join(first["1"][:8])
+    assert "shuffle_markers seed 3" in json.loads((out / "manifest.json").read_text())["source"]
