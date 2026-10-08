@@ -75,5 +75,7 @@ Version 0.5.0 (2026-10-08): vocabulary `cell_types_mouse@2`, @1 plus nine cell t
 gut runs showed missing (`cardiomyocyte`, `adipocyte`, `transit_amplifying_cell`, `eosinophil`, `basophil`,
 `hematopoietic_progenitor`, `pulmonary_neuroendocrine_cell`, `interstitial_cell_of_cajal`, `schwann_cell`;
 the file names the clusters that asked for each); @1 stays loaded for the projects that pinned it.
+Every Cell Ontology id in both files was checked against OLS: three were wrong in @1 and are corrected
+in both (`enteric_glia`, `red_pulp_macrophage`, `intestinal_stem_cell`); labels are unchanged.
 `sc.decision_unreviewed` says when the agent proposed the default ("the agent proposed ndim 35, resolution
 0.4, the defaults") instead of "taken at their defaults"; what fires is unchanged.

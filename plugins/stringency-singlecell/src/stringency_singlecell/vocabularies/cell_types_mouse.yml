@@ -14,6 +14,10 @@
 #                  Xenium rather than true doublets); a person decides whether to subcluster
 #   low_quality    a cluster held together by low counts or low genes rather than by markers
 #   unknown        the evidence does not support any label in this list
+# Terms corrected 2026-10-08 against OLS, labels unchanged: enteric_glia CL:4040002 (was
+# CL:0002481, peritubular myoid cell), red_pulp_macrophage CL:0000874 (was CL:0000869, tonsillar
+# macrophage), intestinal_stem_cell CL:0002250 (was CL:0009016, the large-intestine term); two
+# names follow the ontology's current wording (tuft cell, multiciliated epithelial cell).
 name: cell_types_mouse
 version: 1
 labels:
@@ -69,12 +73,12 @@ terms:
   goblet_cell:            {cl_id: "CL:0000160", name: goblet cell}
   paneth_cell:            {cl_id: "CL:0000510", name: paneth cell}
   enteroendocrine_cell:   {cl_id: "CL:0000164", name: enteroendocrine cell}
-  tuft_cell:              {cl_id: "CL:0002204", name: brush cell}
-  intestinal_stem_cell:   {cl_id: "CL:0009016", name: intestinal crypt stem cell}
+  tuft_cell:              {cl_id: "CL:0002204", name: tuft cell}
+  intestinal_stem_cell:   {cl_id: "CL:0002250", name: intestinal crypt stem cell}
   alveolar_type1:         {cl_id: "CL:0002062", name: pulmonary alveolar type 1 cell}
   alveolar_type2:         {cl_id: "CL:0002063", name: pulmonary alveolar type 2 cell}
   club_cell:              {cl_id: "CL:0000158", name: club cell}
-  ciliated_cell:          {cl_id: "CL:0005012", name: multi-ciliated epithelial cell}
+  ciliated_cell:          {cl_id: "CL:0005012", name: multiciliated epithelial cell}
   basal_cell:             {cl_id: "CL:0000646", name: basal cell}
   mesothelial_cell:       {cl_id: "CL:0000077", name: mesothelial cell}
   endothelial:            {cl_id: "CL:0000115", name: endothelial cell}
@@ -82,11 +86,11 @@ terms:
   fibroblast:             {cl_id: "CL:0000057", name: fibroblast}
   smooth_muscle:          {cl_id: "CL:0000192", name: smooth muscle cell}
   pericyte:               {cl_id: "CL:0000669", name: pericyte}
-  enteric_glia:           {cl_id: "CL:0002481", name: peripheral neuroglial cell (enteric glia)}
+  enteric_glia:           {cl_id: "CL:4040002", name: enteroglial cell}
   enteric_neuron:         {cl_id: "CL:0007011", name: enteric neuron}
   stromal_reticular_cell: {cl_id: "CL:0000432", name: reticular cell}
   alveolar_macrophage:    {cl_id: "CL:0000583", name: alveolar macrophage}
-  red_pulp_macrophage:    {cl_id: "CL:0000869", name: splenic red pulp macrophage}
+  red_pulp_macrophage:    {cl_id: "CL:0000874", name: splenic red pulp macrophage}
   macrophage:             {cl_id: "CL:0000235", name: macrophage}
   monocyte:               {cl_id: "CL:0000576", name: monocyte}
   neutrophil:             {cl_id: "CL:0000775", name: neutrophil}
