@@ -17,6 +17,10 @@ def test_plugin_loads() -> None:
         "cell_types_mouse@1" in p.vocabularies and "unknown" in p.vocabularies["cell_types_mouse@1"]
     )
     assert "flag_outlier_punches" in p.operations and "punch_qc_verdict@1" in p.vocabularies
+    # @2 adds cell types and keeps every @1 label, so a project moving to @2 loses none
+    v1, v2 = p.vocabularies["cell_types_mouse@1"], p.vocabularies["cell_types_mouse@2"]
+    assert set(v1) < set(v2) and len(v2) == len(set(v2)) == len(v1) + 9
+    assert {"cardiomyocyte", "adipocyte", "transit_amplifying_cell"} <= set(v2)
     assert p.vocabularies["punch_qc_verdict@1"] == ("keep", "review", "exclude", "already_excluded")
     # v2 (2026-09-21): the reviewer never excludes; exclusion is the owner's decision at the hold
     assert p.vocabularies["punch_qc_verdict@2"] == ("keep", "review", "already_excluded")

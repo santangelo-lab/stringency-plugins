@@ -70,3 +70,10 @@ every decision point, even at the pipeline default; owner decision 2026-10-07),
 `sc.batch_effect_suspected` (names the fork route with Harmony), `sc.unknown_fraction` and
 `qc.filter_ordering`; vocabulary `cell_types_mouse@1` (43 labels for the four Lyons organs, a
 draft for the owner's approval, with Cell Ontology ids in `terms`).
+
+Version 0.5.0 (2026-10-08): vocabulary `cell_types_mouse@2`, @1 plus nine cell types the Lyons CLP lung and
+gut runs showed missing (`cardiomyocyte`, `adipocyte`, `transit_amplifying_cell`, `eosinophil`, `basophil`,
+`hematopoietic_progenitor`, `pulmonary_neuroendocrine_cell`, `interstitial_cell_of_cajal`, `schwann_cell`;
+the file names the clusters that asked for each); @1 stays loaded for the projects that pinned it.
+`sc.decision_unreviewed` says when the agent proposed the default ("the agent proposed ndim 35, resolution
+0.4, the defaults") instead of "taken at their defaults"; what fires is unchanged.

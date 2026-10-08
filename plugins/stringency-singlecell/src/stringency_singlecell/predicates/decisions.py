@@ -71,12 +71,31 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
             all_fork = False
     if departing or all_fork:
         return Verdict(False, None, {"decision_points": points, "departing": departing})
-    names = ", ".join(sorted(points))
     return Verdict(
         True,
-        f"decision points {names} were taken at their defaults; a person signs off on the choice",
+        f"{_at_defaults(points)}; a person signs off on the choice",
         {"decision_points": points, "rationale_ref": ctx.action.rationale_ref},
     )
+
+
+def _at_defaults(points: dict[str, dict[str, Any]]) -> str:
+    """Say which decision points the agent proposed at their defaults and which were taken
+    silently: an operator that reasons its way to the default (gut, 2026-10-08, ndim 35) did not
+    take it unexamined."""
+    proposed = [
+        f"{n} {points[n]['value']}" for n in sorted(points) if points[n]["source"] == "agent"
+    ]
+    silent = [n for n in sorted(points) if points[n]["source"] not in ("agent", "fork")]
+    parts = []
+    if proposed:
+        those = "the default" if len(proposed) == 1 else "the defaults"
+        parts.append(f"the agent proposed {', '.join(proposed)}, {those}")
+    if silent:
+        verb = "was" if len(silent) == 1 else "were"
+        its = "its default" if len(silent) == 1 else "their defaults"
+        lead = "decision point" if len(silent) == 1 else "decision points"
+        parts.append(f"{lead} {', '.join(silent)} {verb} taken at {its}")
+    return " and ".join(parts)
 
 
 @predicate(

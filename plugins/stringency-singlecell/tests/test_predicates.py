@@ -320,6 +320,17 @@ def test_decision_unreviewed_the_other_cases() -> None:
         "value": "logarea",
         "source": "default",
     }
+    assert v.reason == (
+        "decision points method, scale_factor were taken at their defaults; "
+        "a person signs off on the choice"
+    )
+    # the agent proposed the defaults with a reason: the hold says so rather than "taken"
+    v = fn(_decision({"method": "agent", "scale_factor": "agent"}))
+    assert v.fired and v.reason.startswith("the agent proposed method logarea, scale_factor ")
+    assert "the defaults; a person signs off" in v.reason
+    v = fn(_decision({"method": "agent"}))
+    assert v.reason.startswith("the agent proposed method logarea, the default and decision point")
+    assert "scale_factor was taken at its default" in v.reason
     # every decision point is a fork's --set: a person's recorded decision, nothing opens
     assert not fn(_decision({"method": "fork", "scale_factor": "fork"}, method="log_total")).fired
     # one fork value and one silent default: the default still needs a sign-off
