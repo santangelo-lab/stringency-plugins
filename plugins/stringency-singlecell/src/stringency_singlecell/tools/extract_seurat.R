@@ -57,8 +57,11 @@ for (fname in names(design$factors)) {
   }
 }
 domain <- list(assay = assay, fovs = as.list(names(obj@images)))
-clus <- flags$clustering$column
-if (!is.null(clus) && clus %in% colnames(md)) {
+# exact names: `$` partial-matches, so with no `clustering` flag `flags$clustering` returned the
+# `clustering_grid` flag of a cluster-umap 0.4 object and its eight columns (synthetic upstream
+# run, 2026-10-14); a grid object has no identity yet and reports no clustering
+clus <- flags[["clustering"]][["column"]]
+if (!is.null(clus) && length(clus) == 1 && clus %in% colnames(md)) {
   domain$clustering_column <- clus
   domain$n_clusters <- length(unique(md[[clus]]))
   for (by in c("punch_id", "animal")) {
@@ -69,14 +72,14 @@ if (!is.null(clus) && clus %in% colnames(md)) {
     }
   }
 }
-lab <- flags$labels
+lab <- flags[["labels"]]
 if (!is.null(lab$column) && lab$column %in% colnames(md)) {
   domain$labels <- list(column = lab$column, vocabulary = lab$vocabulary,
                         n_labels = length(unique(md[[lab$column]])),
                         unknown_fraction = if ("unknown" %in% md[[lab$column]]) mean(md[[lab$column]] == "unknown") else 0)
 }
-if (!is.null(flags$spatial_graph)) domain$spatial_graph <- flags$spatial_graph
-if (!is.null(flags$exclusions)) domain$exclusions <- flags$exclusions
+if (!is.null(flags[["spatial_graph"]])) domain$spatial_graph <- flags[["spatial_graph"]]
+if (!is.null(flags[["exclusions"]])) domain$exclusions <- flags[["exclusions"]]
 env <- list(
   extractor = "sc.seurat_object@1", type = "seurat_object",
   n_obs = ncol(obj), n_var = nrow(obj),
