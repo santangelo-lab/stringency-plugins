@@ -976,8 +976,8 @@ wheels = [
 
 [[package]]
 name = "stringency"
-version = "0.1.0"
-source = { git = "https://github.com/santangelo-lab/stringency#d2198612f5b83a912136a60e43321557db407294" }
+version = "0.2.19"
+source = { git = "https://github.com/santangelo-lab/stringency?tag=v0.2.19#265ca6a49617b77c5d651d61999bce850da012c1" }
 dependencies = [
     { name = "blake3" },
     { name = "jinja2" },
@@ -1018,7 +1018,7 @@ dev = [
 
 [[package]]
 name = "stringency-singlecell"
-version = "0.5.0"
+version = "0.5.1"
 source = { editable = "plugins/stringency-singlecell" }
 dependencies = [
     { name = "pydantic" },
@@ -1038,7 +1038,7 @@ requires-dist = [
     { name = "pyarrow", marker = "extra == 'extractors'", specifier = ">=17" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "stringency", git = "https://github.com/santangelo-lab/stringency" },
+    { name = "stringency", git = "https://github.com/santangelo-lab/stringency?tag=v0.2.19" },
 ]
 provides-extras = ["extractors"]
 
