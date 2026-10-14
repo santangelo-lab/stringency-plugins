@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -267,10 +268,11 @@ def test_extract_punch_bundle_set_and_qc_object_set(
 # --- real inputs, read-only -------------------------------------------------------------------
 
 real = pytest.mark.skipif(
-    not RAW.exists() or not PROJ.exists(), reason="Lyons CLP data not mounted"
+    not RAW.exists() or not PROJ.exists(), reason=f"{RAW} or {PROJ} not mounted"
 )
 
 
+@pytest.mark.institutional
 @real
 def test_real_liver_bundle(design_json: Path) -> None:
     out = run_tool("extract_xenium_bundle", RAW, design_json)
@@ -287,6 +289,7 @@ def test_real_liver_bundle(design_json: Path) -> None:
     assert d["h5_set_matches_cells"] is True
 
 
+@pytest.mark.institutional
 @real
 def test_real_coordinates_and_layout_agree(design_json: Path) -> None:
     coords = run_tool("extract_punch_coordinates", PROJ / "punch_coordinates", design_json)
@@ -615,6 +618,7 @@ def test_shuffle_markers_tool(tmp_path: Path) -> None:
     assert "shuffle_markers seed 3" in json.loads((out / "manifest.json").read_text())["source"]
 
 
+@pytest.mark.institutional
 def test_mix_batches_tool(tmp_path: Path) -> None:
     """The negative-control generator of assess-batch removes the slide structure of a
     batch_evidence directory: batch_excess zero everywhere, overall kNN excess near zero, the
@@ -626,11 +630,13 @@ def test_mix_batches_tool(tmp_path: Path) -> None:
 
     from stringency_singlecell import TOOLS
 
-    fixture = Path(
-        "/home/jrrose5/github/stringency-xenium-method/modules/assess-batch/controls/fixtures/batch_split"
+    method = Path(
+        os.environ.get("STRINGENCY_XENIUM_METHOD")
+        or Path.home() / "github" / "stringency-xenium-method"
     )
+    fixture = method / "modules" / "assess-batch" / "controls" / "fixtures" / "batch_split"
     if not fixture.exists():
-        pytest.skip("method fixture not present on this machine")
+        pytest.skip(f"{fixture} not present (set STRINGENCY_XENIUM_METHOD to a method checkout)")
     src = tmp_path / "split"
     shutil.copytree(fixture, src)
     out = tmp_path / "mixed"

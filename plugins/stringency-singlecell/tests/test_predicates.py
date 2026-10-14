@@ -310,6 +310,37 @@ def test_every_plugin_predicate_has_a_case() -> None:
 # --- coords_missing, the other ways it fires ------------------------------------------------
 
 
+TWO_REGIONS = {"0076570/Liver": LIVER_0076570, "0076581/Lung": ["6-1-Lung-A", "6-2-Lung-A"]}
+
+
+def _two_regions(coords: list[dict]) -> dict:
+    """A multi-region project: two bundles bound, one layout over both (version 2, 2026-10-14)."""
+    return {
+        "bundle_a": obj("xenium_bundle", bundle_summary("0076570", "Liver")),
+        "bundle_b": obj("xenium_bundle", bundle_summary("0076581", "Lung")),
+        "layout": obj("tma_layout", layout_summary(TWO_REGIONS)),
+        "coords": obj("punch_coordinates", coords_summary(coords)),
+    }
+
+
+def test_coords_missing_checks_every_bound_region() -> None:
+    fn = registry.get("spatial.coords_missing").fn  # type: ignore[union-attr]
+    assert registry.get("spatial.coords_missing").version == 2  # type: ignore[union-attr]
+    # the first region is complete, the second lacks a polygon: version 1 passed this
+    v = fn(ctx("split_punches", _two_regions(GOOD_COORDS + [punch("6-1-Lung-A")])))
+    assert v.fired and v.reason == "coordinates and layout disagree for 0076581/Lung"
+    assert v.evidence["layout_without_polygon"] == {"0076581/Lung": ["6-2-Lung-A"]}
+    assert v.evidence["regions_checked"] == ["0076570/Liver", "0076581/Lung"]
+    # every bound region covered: passes, and a polygon of an unbound region is not a mislabel
+    extra = TWO_REGIONS | {"0076570/Spleen": ["24-1-Spleen-A"]}
+    objs = _two_regions(
+        GOOD_COORDS + [punch("6-1-Lung-A"), punch("6-2-Lung-A"), punch("24-1-Spleen-A")]
+    )
+    objs["layout"] = obj("tma_layout", layout_summary(extra))
+    v = fn(ctx("split_punches", objs))
+    assert not v.fired and v.evidence["n_polygons_for_other_regions"] == 1
+
+
 def test_decision_unreviewed_the_other_cases() -> None:
     fn = registry.get("sc.decision_unreviewed").fn  # type: ignore[union-attr]
     # nobody proposed anything: the defaults were taken silently, a person signs off
@@ -333,6 +364,14 @@ def test_decision_unreviewed_the_other_cases() -> None:
     assert "scale_factor was taken at its default" in v.reason
     # every decision point is a fork's --set: a person's recorded decision, nothing opens
     assert not fn(_decision({"method": "fork", "scale_factor": "fork"}, method="log_total")).fired
+    # likewise a value the objective declared or a fork's parent admitted (engine 0.2.17, 0.2.18)
+    assert not fn(_decision({"method": "declared", "scale_factor": "inherited"})).fired
+    assert not fn(
+        _decision({"method": "fork", "scale_factor": "declared"}, method="log_total")
+    ).fired
+    # one point inherited and the other taken silently: the silent one still needs a person
+    v = fn(_decision({"method": "inherited"}))
+    assert v.fired and "scale_factor was taken at its default" in v.reason
     # one fork value and one silent default: the default still needs a sign-off
     assert fn(_decision({"method": "fork"}, method="log_total")).fired
     # a module without decision points opens nothing
@@ -372,7 +411,7 @@ def test_coords_missing_polygon_not_in_layout_is_a_mislabel() -> None:
     coords = GOOD_COORDS[:2] + [punch("21-2-Liver")]
     v = registry.get("spatial.coords_missing").fn(ctx("split_punches", _inputs(coords)))  # type: ignore[union-attr]
     assert v.fired and v.evidence["polygon_not_in_layout"] == ["21-2-Liver"]
-    assert v.evidence["layout_without_polygon"] == ["48-2-Liver"]
+    assert v.evidence["layout_without_polygon"] == {"0076570/Liver": ["48-2-Liver"]}
 
 
 def test_coords_missing_passes_with_other_regions_polygons() -> None:

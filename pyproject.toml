@@ -11,7 +11,7 @@ package = false
 members = ["plugins/*"]
 
 [tool.uv.sources]
-stringency = { git = "https://github.com/santangelo-lab/stringency" }
+stringency = { git = "https://github.com/santangelo-lab/stringency", tag = "v0.2.19" }
 stringency-singlecell = { workspace = true }
 
 [dependency-groups]
@@ -30,6 +30,14 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["plugins/*/tests"]
+markers = [
+    "institutional: needs data or a method checkout on the lab workstation; skipped elsewhere with the path named",
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+exclude = ["tools/"]  # the extractor scripts run inside module images; typing them is a later cleanup
 
 [tool.ruff.lint.isort]
 known-first-party = ["stringency_singlecell", "stringency_bulkrna"]

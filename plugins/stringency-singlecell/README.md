@@ -1,6 +1,6 @@
 # stringency-singlecell
 
-**At 0.5.0 (2026-10-08).** The plugin behind `stringency-xenium-method`'s `xenium-qc-tma` (split, QC,
+**At 0.5.1 (2026-10-14; needs engine 0.2.19).** `spatial.coords_missing@2` checks every bound region; `sc.decision_unreviewed` treats a declared or inherited decision point as a person's; `VERSION` is tested against `pyproject.toml`; CI runs the tests, ruff and mypy (the `tools/` scripts excluded from typing). Before that, **at 0.5.0 (2026-10-08).** The plugin behind `stringency-xenium-method`'s `xenium-qc-tma` (split, QC,
 summary, the outlier judgment) and `xenium-upstream` (merge to annotation) pipelines: object types
 for Xenium bundles, punch coordinates, layouts, punch and QC object sets, Seurat objects, batch and
 cluster evidence and QC metric tables, each with an extractor under `tools/`; predicates for

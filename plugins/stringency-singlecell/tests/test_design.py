@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -62,7 +63,8 @@ def test_single_level_condition_factor_is_allowed() -> None:
     assert validate(DESIGN, DESIGN_SCHEMA) == []
 
 
-@pytest.mark.skipif(not LYONS_DESIGN.exists(), reason="Lyons CLP project directory not mounted")
+@pytest.mark.institutional
+@pytest.mark.skipif(not LYONS_DESIGN.exists(), reason=f"{LYONS_DESIGN} not mounted")
 def test_lyons_clp_design_file_is_the_reference_design() -> None:
     d = yaml.safe_load(LYONS_DESIGN.read_text())
     assert validate(d, DESIGN_SCHEMA) == []
@@ -96,6 +98,10 @@ def test_plugin_surface() -> None:
     from stringency_singlecell import VERSION
 
     assert p.version == VERSION
+    # the string the engine records equals the package version (they drifted once, 0.4.0 -> 0.4.1)
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    m = re.search(r'^version = "([^"]+)"', pyproject.read_text(), flags=re.MULTILINE)
+    assert m and m.group(1) == VERSION
     assert "processed_object" in p.objective_questions
     assert "qc_summary" in p.objective_questions
     assert set(p.object_types) >= {

@@ -9,16 +9,21 @@ on these plugins.
 
 | plugin | domain | status |
 |---|---|---|
-| `plugins/stringency-singlecell` | single-cell and spatial (Xenium) | 0.5.0 (2026-10-08): the object types, extractors, design schema, predicates, vocabularies (`punch_qc_verdict@2`, `batch_route@1`, `cell_types_mouse@2`) and typed operations that `stringency-xenium-method`'s `xenium-qc-tma` and `xenium-upstream` pipelines use; see its README |
+| `plugins/stringency-singlecell` | single-cell and spatial (Xenium) | 0.5.1 (2026-10-14, needs engine 0.2.19; 0.5.0 of 2026-10-08 ran Lyons v2): the object types, extractors, design schema, predicates, vocabularies (`punch_qc_verdict@2`, `batch_route@1`, `cell_types_mouse@2`) and typed operations that `stringency-xenium-method`'s `xenium-qc-tma` and `xenium-upstream` pipelines use; see its README |
 | `plugins/stringency-bulkrna` | bulk RNA-seq | not started (engine roadmap Lane B, dormant) |
 
 ## Develop
 
 ```bash
 uv sync
-uv run pytest
+uv run pytest          # tests marked institutional skip off the lab workstation, naming the path
 uv run ruff check .
+uv run mypy plugins/stringency-singlecell/src
 ```
+
+`.github/workflows/ci.yml` runs the same on every push and pull request. The engine the tests
+run against is the tag `tool.uv.sources` pins; bump it with the `stringency>=` floor in the
+plugin's `pyproject.toml` and `uv lock` when a plugin needs a newer engine.
 
 ## Install a plugin into a stringency engine
 

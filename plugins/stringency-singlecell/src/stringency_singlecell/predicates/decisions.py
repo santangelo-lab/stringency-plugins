@@ -41,9 +41,12 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
     2026-10-07). `param.agent_proposed` holds when the agent departs from a default; this
     predicate holds in the complementary case, so a step with decision points opens exactly one
     hold: when no decision point is an agent proposal that departs from its default. A fork's
-    `--set` is a person's recorded decision, so a step whose decision points all come from a fork
-    opens nothing. Evidence: each decision point's default, value and source, and the agent's
-    rationale reference when it stated one."""
+    `--set` is a person's recorded decision, and so are a value the objective declared
+    (`declared`, engine 0.2.18) and one a fork's parent admitted (`inherited`, engine 0.2.17:
+    the Lyons v2 forks re-asked ndim at its default), so a step whose decision points all come
+    from those opens nothing; no run before those engines carries such a source, so every earlier
+    verdict is unchanged and the version stays 1. Evidence: each decision point's default, value
+    and source, and the agent's rationale reference when it stated one."""
     m = ctx.project.module_for(ctx.action.module)
     if m is None or not m.decision_points:
         return Verdict(False)
@@ -54,7 +57,7 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
     )
     points: dict[str, dict[str, Any]] = {}
     departing: list[str] = []
-    all_fork = True
+    all_decided = True  # every point from a fork's --set, the declaration, or the parent run
     for name in m.decision_points:
         default: Any = None
         if step is not None and name in step.params:
@@ -67,9 +70,9 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
         points[name] = {"default": default, "value": value, "source": source}
         if source == "agent" and value != default:
             departing.append(name)
-        if source != "fork":
-            all_fork = False
-    if departing or all_fork:
+        if source not in ("fork", "declared", "inherited"):
+            all_decided = False
+    if departing or all_decided:
         return Verdict(False, None, {"decision_points": points, "departing": departing})
     return Verdict(
         True,
@@ -85,11 +88,20 @@ def _at_defaults(points: dict[str, dict[str, Any]]) -> str:
     proposed = [
         f"{n} {points[n]['value']}" for n in sorted(points) if points[n]["source"] == "agent"
     ]
-    silent = [n for n in sorted(points) if points[n]["source"] not in ("agent", "fork")]
+    decided = ("agent", "fork", "declared", "inherited")
+    silent = [n for n in sorted(points) if points[n]["source"] not in decided]
     parts = []
     if proposed:
         those = "the default" if len(proposed) == 1 else "the defaults"
         parts.append(f"the agent proposed {', '.join(proposed)}, {those}")
+    carried = {
+        "declared": [n for n in sorted(points) if points[n]["source"] == "declared"],
+        "inherited": [n for n in sorted(points) if points[n]["source"] == "inherited"],
+    }
+    if carried["declared"]:
+        parts.append(f"{', '.join(carried['declared'])} declared in the objective")
+    if carried["inherited"]:
+        parts.append(f"{', '.join(carried['inherited'])} inherited from the parent run")
     if silent:
         verb = "was" if len(silent) == 1 else "were"
         its = "its default" if len(silent) == 1 else "their defaults"
