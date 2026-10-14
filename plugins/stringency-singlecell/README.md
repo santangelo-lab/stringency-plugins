@@ -1,5 +1,16 @@
 # stringency-singlecell
 
+**At 0.5.0 (2026-10-08).** The plugin behind `stringency-xenium-method`'s `xenium-qc-tma` (split, QC,
+summary, the outlier judgment) and `xenium-upstream` (merge to annotation) pipelines: object types
+for Xenium bundles, punch coordinates, layouts, punch and QC object sets, Seurat objects, batch and
+cluster evidence and QC metric tables, each with an extractor under `tools/`; predicates for
+coordinates, cell counts, QC failure fractions, the cell-area join, exclusion proposals, unreviewed
+decision points, batch effects and unknown fractions; vocabularies `punch_qc_verdict@2`,
+`batch_route@1` and `cell_types_mouse@2` (Cell Ontology ids checked against OLS); the generator
+tools `shuffle_markers` and `mix_batches` for the judgments' negative controls. The version history
+below is in reverse order of writing, not of version; `git log` is the record. The `xenium-qc`
+pipeline named below was removed from the method in rc11 (a single bundle binds `xenium-qc-tma`).
+
 The `stringency` domain plugin for single-cell and spatial (Xenium) analysis; application 1 is the
 Lyons CLP Xenium TMA, QC first (`stringency-xenium-method`). Version 0.1.0 (2026-09-17, Lane C
 session C2) delivers the pieces the `xenium-qc` pipeline needs:

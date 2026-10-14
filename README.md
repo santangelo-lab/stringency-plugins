@@ -9,8 +9,8 @@ on these plugins.
 
 | plugin | domain | status |
 |---|---|---|
-| `plugins/stringency-singlecell` | single-cell and spatial (Xenium) | skeleton; filled by the app-1 sessions |
-| `plugins/stringency-bulkrna` | bulk RNA-seq | planned (Lane B session 1) |
+| `plugins/stringency-singlecell` | single-cell and spatial (Xenium) | 0.5.0 (2026-10-08): the object types, extractors, design schema, predicates, vocabularies (`punch_qc_verdict@2`, `batch_route@1`, `cell_types_mouse@2`) and typed operations that `stringency-xenium-method`'s `xenium-qc-tma` and `xenium-upstream` pipelines use; see its README |
+| `plugins/stringency-bulkrna` | bulk RNA-seq | not started (engine roadmap Lane B, dormant) |
 
 ## Develop
 
@@ -27,4 +27,4 @@ scripts/install.sh --prefix <prefix> \
   --plugin git+https://github.com/santangelo-lab/stringency-plugins@<tag>#subdirectory=plugins/stringency-singlecell
 ```
 
-Repository layout decided 2026-09-17 (engine `spec/plans/roadmap-2026-09.md`, Lane D item 2).
+Repository layout decided 2026-09-17 (engine `spec/archive/roadmap-2026-09.md`, Lane D item 2). A CI workflow, a `requires` check against the engine and a version test are scheduled in the engine's `spec/plans/roadmap-2026-10.md` (W3).
