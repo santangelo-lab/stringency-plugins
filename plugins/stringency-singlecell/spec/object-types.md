@@ -104,3 +104,20 @@ One directory:
 The extractor (stdlib) refuses a directory without `manifest.json` (contract version 1) or
 `batch_overview.csv`; it reports the manifest's summary under `uns_flags.batch_assessment` so a
 predicate written against the Seurat object's flag reads this object the same way.
+
+## Plain types written by the open tools (0.6.0)
+
+The Xenium method's open tools (engine open mode) exchange tables through types that are not
+plugin object types: no extractor runs on them, `topo.input_type_mismatch` compares the strings,
+and a tool's input of one of these types binds the latest artifact of that type without `--in`.
+A method that writes them follows these columns; the first column is the row key an answer cites.
+
+| type | format | first column | columns |
+|---|---|---|---|
+| `cell_table` | csv | `cell_id` (unique: `<punch_id>_<barcode>`) | `punch_id, animal, timepoint_h, condition, slide, cell_type, cell_type_fine, cluster, x, y, cell_area, nCount_Xenium` (the design columns as declared; the label column from `misc$stringency$labels$column`) |
+| `punch_table` | csv | `punch_id` | the design columns, `n_cells, area_mm2, density_cells_per_mm2` (convex hull of the punch's cells) |
+| `pseudobulk_set` | dir | `counts.csv`: `gene`; `samples.csv`: `sample` | `counts.csv` one column per `<punch_id>|<cell_type>` sample; `samples.csv`: `punch_id, cell_type, animal, timepoint_h, condition, slide, n_cells` |
+| `proportion_table` | csv | `cell_type` | one column per punch (the fraction of the punch's cells), `total` |
+
+Negative controls on these tables use the plugin tool `shuffle_column` (params `column`, `by`,
+`seed`, and `file` for a directory), which permutes one design column across units.

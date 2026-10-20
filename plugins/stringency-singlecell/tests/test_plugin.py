@@ -24,3 +24,24 @@ def test_plugin_loads() -> None:
     assert p.vocabularies["punch_qc_verdict@1"] == ("keep", "review", "exclude", "already_excluded")
     # v2 (2026-09-21): the reviewer never excludes; exclusion is the owner's decision at the hold
     assert p.vocabularies["punch_qc_verdict@2"] == ("keep", "review", "already_excluded")
+
+
+def test_open_mode_and_the_open_tools_operations() -> None:
+    """0.6.0: the plugin admits open mode and types the open tools' operations, so a method's
+    tools can list `open` and a project can be initialised from a delivery."""
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    assert "open" in p.modes and "pipeline" in p.modes
+    for op in (
+        "extract_cells",
+        "compose_cells",
+        "plot_composition",
+        "test_differential_expression",
+        "score_pathways",
+        "neighborhood_enrichment",
+        "infer_cell_communication",
+    ):
+        assert op in p.operations, op
+        assert p.operations[op].params_schema.get("additionalProperties") is False, op
+    tests = p.operations["compose_cells"].params_schema["properties"]["tests"]["items"]["enum"]
+    assert tests == ["propeller", "edger_ql", "edger_density", "permutation"]
+    assert "shuffle_column" in p.tools

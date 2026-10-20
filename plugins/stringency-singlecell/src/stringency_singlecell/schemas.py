@@ -196,11 +196,145 @@ OPERATIONS.update(
             "cluster",
             "spatial_neighborhood",
             "characterise_niches",
-            "test_differential_expression",
             "report",
         )
     }
 )
+
+# The open tools (0.6.0; the method's trusted answers on a delivered upstream object). `factor`
+# names a declared design factor and `reference` one of its levels; every other level is tested
+# against it. `replicate_unit` is a decision point the person states: `animal` is the design's
+# replication unit, `punch` is pseudoreplication and the tools say so in their coverage tables.
+_FACTOR = {
+    "factor": {"type": "string", "description": "the design factor whose levels are compared"},
+    "reference": {
+        "type": "string",
+        "description": "the factor level the others are tested against",
+    },
+    "replicate_unit": {
+        "type": "string",
+        "enum": ["animal", "punch"],
+        "description": "what counts as one replicate: the animal (the design's unit) or the punch",
+    },
+}
+OPERATIONS["extract_cells"] = {"type": "object", "properties": {}, "additionalProperties": False}
+OPERATIONS["compose_cells"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "transform": {
+            "type": "string",
+            "enum": ["logit", "asin"],
+            "description": "the proportion transform before the propeller-style t-test",
+        },
+        "tests": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["propeller", "edger_ql", "edger_density", "permutation"],
+            },
+            "description": (
+                "the composition tests to run, one column block each; effect sizes with "
+                "bootstrap intervals are always written"
+            ),
+        },
+        "min_cells_per_sample": {
+            **_INT,
+            "description": "samples below this many cells are dropped",
+        },
+        "seed": {**_INT, "description": "seed of the bootstrap and permutation draws"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["plot_composition"] = {
+    "type": "object",
+    "properties": {
+        "measure": {
+            "type": "string",
+            "enum": ["proportion", "density", "count"],
+            "description": "what each point shows per cell type",
+        },
+        "top_n": {**_INT, "description": "cell types drawn, the most abundant first"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["test_differential_expression"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "cell_types": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "cell types tested; every type when absent",
+        },
+        "min_cells_per_sample": {
+            **_INT,
+            "description": "pseudobulk samples below this many cells are dropped",
+        },
+        "min_samples_per_group": {
+            **_INT,
+            "description": "a contrast needs this many samples on each side",
+        },
+        "fdr": {**_NUM, "minimum": 0, "maximum": 1, "description": "the adjusted p threshold"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["score_pathways"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "genesets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "names of the gene sets the method ships (innate, ...)",
+        },
+        "genes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "gene symbols scored together as one ad hoc module",
+        },
+        "geneset_name": {
+            "type": "string",
+            "description": "the name of the ad hoc module built from `genes`",
+        },
+        "min_genes": {
+            **_INT,
+            "description": "a module with fewer genes on the panel is scored but flagged",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["neighborhood_enrichment"] = {
+    "type": "object",
+    "properties": {
+        "factor": _FACTOR["factor"],
+        "reference": _FACTOR["reference"],
+        "radius_um": {**_NUM, "minimum": 0, "description": "the neighbourhood radius in microns"},
+        "n_perms": {**_INT, "description": "label permutations behind the z-scores"},
+        "seed": {**_INT, "description": "random seed of the permutations"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["infer_cell_communication"] = {
+    "type": "object",
+    "properties": {
+        "factor": _FACTOR["factor"],
+        "reference": _FACTOR["reference"],
+        "per_punch": {
+            "type": "boolean",
+            "description": "also infer one network per punch (replicate concordance)",
+        },
+        "nboot": {**_INT, "description": "permutations of the communication probability test"},
+        "min_cells": {**_INT, "description": "cell types below this many cells are left out"},
+        "comm_type": {
+            "type": "string",
+            "enum": ["secreted", "contact", "all"],
+            "description": "the CellChatDB interaction classes used",
+        },
+        "seed": {**_INT, "description": "random seed set before the permutations"},
+    },
+    "additionalProperties": False,
+}
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)

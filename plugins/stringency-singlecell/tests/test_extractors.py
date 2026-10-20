@@ -664,3 +664,75 @@ def test_mix_batches_tool(tmp_path: Path) -> None:
     manifest = json.loads((out / "manifest.json").read_text())
     assert "mix_batches seed=1" in manifest["source"]
     assert manifest["summary"]["suspected"] is False
+
+
+def test_shuffle_column_tool(tmp_path: Path) -> None:
+    """The open tools' negative-control generator permutes a design column across units: every
+    row of a unit keeps one value, the multiset of unit values is unchanged, and a directory
+    input is copied with its named file rewritten."""
+    import csv
+    import subprocess
+    import sys
+
+    from stringency_singlecell import TOOLS
+
+    src = tmp_path / "cells.csv"
+    units = {"ctrl-1": "control", "ctrl-2": "control", "24-1": "24", "24-2": "24"}
+    rows = [
+        {"cell_id": f"{u}_{i}", "punch_id": u, "timepoint_h": t, "cell_type": "a"}
+        for u, t in units.items()
+        for i in range(5)
+    ]
+    with open(src, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+    out = tmp_path / "shuffled.csv"
+    job = {"inputs": {"input": str(src)}, "params": {"seed": 2}, "outputs": {"object": str(out)}}
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_column"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    with open(out, newline="") as f:
+        got = list(csv.DictReader(f))
+    assert [r["cell_id"] for r in got] == [r["cell_id"] for r in rows]
+    per_unit = {}
+    for r in got:
+        per_unit.setdefault(r["punch_id"], set()).add(r["timepoint_h"])
+    assert all(len(v) == 1 for v in per_unit.values())
+    assert sorted(next(iter(v)) for v in per_unit.values()) == sorted(units.values())
+    # a directory input: the named file inside is rewritten, the rest copied
+    d = tmp_path / "pb"
+    d.mkdir()
+    (d / "counts.csv").write_text("gene,s1\nA,1\n")
+    with open(d / "samples.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["sample", "animal", "timepoint_h"])
+        w.writeheader()
+        w.writerows(
+            [
+                {"sample": "s1", "animal": "a1", "timepoint_h": "control"},
+                {"sample": "s2", "animal": "a1", "timepoint_h": "control"},
+                {"sample": "s3", "animal": "a2", "timepoint_h": "24"},
+            ]
+        )
+    out_d = tmp_path / "pb_shuffled"
+    job = {
+        "inputs": {"input": str(d)},
+        "params": {"seed": 1, "column": "timepoint_h", "by": "animal", "file": "samples.csv"},
+        "outputs": {"object": str(out_d)},
+    }
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_column"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    assert (out_d / "counts.csv").read_text() == "gene,s1\nA,1\n"
+    with open(out_d / "samples.csv", newline="") as f:
+        s = {r["sample"]: r["timepoint_h"] for r in csv.DictReader(f)}
+    # both samples of animal a1 move together; per animal the values are still one each
+    assert s["s1"] == s["s2"] and sorted({s["s1"], s["s3"]}) == ["24", "control"]
