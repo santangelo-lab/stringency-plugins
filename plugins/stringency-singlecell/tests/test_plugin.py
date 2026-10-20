@@ -42,6 +42,6 @@ def test_open_mode_and_the_open_tools_operations() -> None:
     ):
         assert op in p.operations, op
         assert p.operations[op].params_schema.get("additionalProperties") is False, op
-    tests = p.operations["compose_cells"].params_schema["properties"]["tests"]["items"]["enum"]
-    assert tests == ["propeller", "edger_ql", "edger_density", "permutation"]
+    tests = p.operations["compose_cells"].params_schema["properties"]["tests"]
+    assert tests["type"] == "string" and "permutation" in tests["pattern"]  # comma-separated
     assert "shuffle_column" in p.tools

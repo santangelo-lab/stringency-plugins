@@ -205,6 +205,7 @@ OPERATIONS.update(
 # names a declared design factor and `reference` one of its levels; every other level is tested
 # against it. `replicate_unit` is a decision point the person states: `animal` is the design's
 # replication unit, `punch` is pseudoreplication and the tools say so in their coverage tables.
+# List-valued parameters are comma-separated strings: `--set k=v` values arrive as text (0.6.1).
 _FACTOR = {
     "factor": {"type": "string", "description": "the design factor whose levels are compared"},
     "reference": {
@@ -228,14 +229,12 @@ OPERATIONS["compose_cells"] = {
             "description": "the proportion transform before the propeller-style t-test",
         },
         "tests": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "enum": ["propeller", "edger_ql", "edger_density", "permutation"],
-            },
+            "type": "string",
+            "pattern": "^(propeller|edger_ql|edger_density|permutation)(,(propeller|edger_ql|edger_density|permutation))*$",
             "description": (
-                "the composition tests to run, one column block each; effect sizes with "
-                "bootstrap intervals are always written"
+                "comma-separated tests to run (propeller, edger_ql, edger_density, "
+                "permutation), one column block each; effect sizes with bootstrap intervals "
+                "are always written"
             ),
         },
         "min_cells_per_sample": {
@@ -263,9 +262,8 @@ OPERATIONS["test_differential_expression"] = {
     "properties": {
         **_FACTOR,
         "cell_types": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "cell types tested; every type when absent",
+            "type": "string",
+            "description": "comma-separated cell types to test; every type when absent",
         },
         "min_cells_per_sample": {
             **_INT,
@@ -284,14 +282,12 @@ OPERATIONS["score_pathways"] = {
     "properties": {
         **_FACTOR,
         "genesets": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "names of the gene sets the method ships (innate, ...)",
+            "type": "string",
+            "description": "comma-separated names of gene sets the method ships (innate, ...)",
         },
         "genes": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "gene symbols scored together as one ad hoc module",
+            "type": "string",
+            "description": "comma-separated gene symbols scored together as one ad hoc module",
         },
         "geneset_name": {
             "type": "string",
