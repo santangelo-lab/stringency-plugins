@@ -274,6 +274,11 @@ OPERATIONS["test_differential_expression"] = {
             "description": "a contrast needs this many samples on each side",
         },
         "fdr": {**_NUM, "minimum": 0, "maximum": 1, "description": "the adjusted p threshold"},
+        "min_logfc": {
+            **_NUM,
+            "minimum": 0,
+            "description": "the log2 fold change a gene must reliably exceed (limma treat)",
+        },
     },
     "additionalProperties": False,
 }
