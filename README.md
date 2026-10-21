@@ -25,6 +25,12 @@ uv run mypy plugins/stringency-singlecell/src
 run against is the tag `tool.uv.sources` pins; bump it with the `stringency>=` floor in the
 plugin's `pyproject.toml` and `uv lock` when a plugin needs a newer engine.
 
+## Tags
+
+Every tag from `v0.2.0` on was pushed after `ruff` and the tests passed. The tags `v0.1.2`,
+`v0.1.3`, `v0.1.5` and `v0.1.6` (2026-09-18) were pushed before the checks ran and are not
+usable; they stay because session notes and project traces cite them.
+
 ## Install a plugin into a stringency engine
 
 ```bash
