@@ -127,6 +127,14 @@ def test_plugin_surface() -> None:
         "sc.batch_route_review",
         "sc.unknown_fraction",
         "qc.filter_ordering",
+        # the downstream seven (0.7.0, engine backlog L54)
+        "de.replication_unit",
+        "de.covariate_omission",
+        "de.selection_bias",
+        "test.multiple_comparison",
+        "test.assumptions_unchecked",
+        "spatial.neighborhood_undeclared",
+        "spatial.no_permutation_null",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
         "proceed_uncorrected",
