@@ -128,7 +128,55 @@ def _export(parent: dict, out: dict) -> dict:
 
 
 # (predicate id, must-fire ctx, must-pass ctx)
+def _de(operation: str = "test_differential_expression", **params: object) -> GateContext:
+    """A downstream test's action under the Lyons-shaped design (replication unit animal,
+    batch slide, factors timepoint_h and condition)."""
+    base: dict[str, object] = {
+        "factor": "timepoint_h",
+        "reference": "control",
+        "replicate_unit": "animal",
+        "fdr": 0.05,
+        "min_samples_per_group": 2,
+        "min_cells_per_sample": 30,
+    }
+    base.update(params)
+    return ctx(operation, {}, **base)
+
+
+def _derived(**params: object) -> GateContext:
+    from stringency.state import StepRecord
+
+    hist = (StepRecord(step="04_cluster", operation="cluster_umap", params={}, output_digests={}),)
+    base: dict[str, object] = {
+        "factor": "cluster",
+        "reference": "0",
+        "replicate_unit": "animal",
+        "fdr": 0.05,
+    }
+    base.update(params)
+    return ctx("test_differential_expression", {}, history=hist, **base)
+
+
+def _nhood(**params: object) -> GateContext:
+    base: dict[str, object] = {"factor": "timepoint_h", "radius_um": 30, "n_perms": 200, "seed": 0}
+    base.update(params)
+    act = action("neighborhood_enrichment", **base)
+    return ctx("neighborhood_enrichment", {}, act=act)
+
+
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    # the downstream tools (plugin 0.7.0, L54)
+    (
+        "de.replication_unit",
+        lambda: _de(replicate_unit="punch"),
+        lambda: _de(replicate_unit="animal"),
+    ),
+    ("de.covariate_omission", lambda: _de(), lambda: _de(covariates="slide")),
+    ("de.selection_bias", lambda: _derived(), lambda: _derived(factor="timepoint_h")),
+    ("test.multiple_comparison", lambda: _de(fdr=1.0), lambda: _de(fdr=0.05)),
+    ("test.assumptions_unchecked", lambda: _de(min_samples_per_group=1), lambda: _de()),
+    ("spatial.neighborhood_undeclared", lambda: _nhood(radius_um=None), lambda: _nhood()),
+    ("spatial.no_permutation_null", lambda: _nhood(n_perms=10), lambda: _nhood()),
     (
         "sc.decision_unreviewed",
         # the operator proposed the pipeline default with a reason: a person still signs off
@@ -673,3 +721,57 @@ def test_batch_effect_suspected_is_logged_not_held() -> None:
     spec = registry.get("sc.batch_effect_suspected")
     assert spec is not None and spec.version == 2
     assert str(spec.default).lower().endswith("log")
+
+
+# --- the downstream predicates, the other ways they fire and pass ---------------------------
+
+
+def test_replication_unit_reads_the_design_hierarchy() -> None:
+    assert _run("de.replication_unit", _de(replicate_unit="cell")) is True
+    assert _run("de.replication_unit", _de(replicate_unit="punch_id")) is True
+    assert (
+        _run("de.replication_unit", _de(operation="compose_cells", replicate_unit="punch")) is True
+    )
+    v = registry.get("de.replication_unit").fn(_de(replicate_unit="punch"))  # type: ignore[union-attr]
+    assert v.evidence["declared_replication_unit"] == "animal" and v.evidence["proposed"] == "punch"
+    assert _run("de.replication_unit", _de(replicate_unit="sheep")) is False  # left to out_of_range
+
+
+def test_covariate_omission_sees_the_model_terms() -> None:
+    v = registry.get("de.covariate_omission").fn(_de())  # type: ignore[union-attr]
+    assert v.fired and v.evidence == {"declared_batch": ["slide"], "model_terms": ["timepoint_h"]}
+    assert _run("de.covariate_omission", _de(formula="~ slide + timepoint_h")) is False
+    assert _run("de.covariate_omission", _de(batch=["slide"])) is False
+
+
+def test_selection_bias_needs_a_deriving_step_and_no_holdout() -> None:
+    assert _run("de.selection_bias", _de(factor="cluster")) is False  # nothing derived it
+    v = registry.get("de.selection_bias").fn(_derived())  # type: ignore[union-attr]
+    assert v.fired and v.evidence["derived_in"] == ["04_cluster"]
+
+
+def test_multiple_comparison_and_assumptions_variants() -> None:
+    assert _run("test.multiple_comparison", _de(correction="none")) is True
+    assert _run("test.multiple_comparison", _de(p_adjust=False)) is True
+    assert _run("test.assumptions_unchecked", _de(min_cells_per_sample=0)) is True
+    # the policy sets the sample floor
+    c = ctx(
+        "test_differential_expression",
+        {},
+        ranges={"test.min_samples_per_group": {"standard": [3, 1e9]}},
+        factor="timepoint_h",
+        min_samples_per_group=2,
+    )
+    assert _run("test.assumptions_unchecked", c) is True
+
+
+def test_neighbourhood_variants() -> None:
+    assert _run("spatial.neighborhood_undeclared", _nhood(radius_um=None, k=15)) is False
+    assert _run("spatial.no_permutation_null", _nhood(n_perms=None)) is True
+    c = ctx(
+        "neighborhood_enrichment",
+        {},
+        ranges={"spatial.n_perms": {"standard": [500, 1e9]}},
+        act=action("neighborhood_enrichment", radius_um=30, n_perms=200),
+    )
+    assert _run("spatial.no_permutation_null", c) is True

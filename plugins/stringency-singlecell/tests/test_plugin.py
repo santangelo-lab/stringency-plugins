@@ -11,7 +11,7 @@ def test_plugin_loads() -> None:
         and "differential_expression" in p.objective_questions
     )
     assert (
-        len(p.predicates()) == 11
+        len(p.predicates()) == 18
     )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review
     assert (
         "cell_types_mouse@1" in p.vocabularies and "unknown" in p.vocabularies["cell_types_mouse@1"]

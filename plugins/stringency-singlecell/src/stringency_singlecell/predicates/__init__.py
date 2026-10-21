@@ -11,6 +11,7 @@ from stringency_singlecell.predicates import (  # noqa: F401
     batch,
     cells,
     decisions,
+    downstream,
     join,
     objects,
     outliers,
