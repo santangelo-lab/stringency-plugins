@@ -32,7 +32,7 @@ def test_reference_design_validates_and_loads() -> None:
 @pytest.mark.parametrize(
     "mutate,fragment",
     [
-        (lambda d: d["units"].__setitem__("observation", "region"), "observation"),
+        (lambda d: d["units"].__setitem__("observation", ""), "observation"),
         (lambda d: d.pop("replication_unit"), "replication_unit"),
         (
             lambda d: d["factors"].__setitem__("timepoint_h", {"column": "t", "levels": []}),
@@ -42,7 +42,7 @@ def test_reference_design_validates_and_loads() -> None:
         (lambda d: d.__setitem__("factors", {}), "factors"),
     ],
     ids=[
-        "obs-not-cell-or-punch",
+        "obs-empty",
         "no-replication-unit",
         "empty-levels",
         "unknown-key",
@@ -135,6 +135,11 @@ def test_plugin_surface() -> None:
         "test.assumptions_unchecked",
         "spatial.neighborhood_undeclared",
         "spatial.no_permutation_null",
+        # droplet kits (0.8.0)
+        "sc.qc_floor_above_data",
+        "sc.normalization_depth",
+        "sc.pc1_single_gene",
+        "sc.pca_depth_confounded",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
         "proceed_uncorrected",
@@ -151,3 +156,20 @@ def test_plugin_surface() -> None:
         == []
     )
     assert validate({"anything": 1}, OPERATIONS["annotate_clusters"])
+
+
+def test_observation_unit_may_be_any_name() -> None:
+    """0.8.0: the plugin is not Xenium's alone; a droplet design names the cell, a nucleus, a
+    spot or a bead as the observation and a donor as the sample and replication unit."""
+    from stringency.schemas import validate
+
+    from stringency_singlecell.schemas import DESIGN_SCHEMA
+
+    d = {
+        "design": 1,
+        "units": {"observation": "nucleus", "sample": "donor"},
+        "factors": {"condition": {"column": "condition", "levels": ["ctrl", "stim"]}},
+        "batch": [],
+        "replication_unit": "donor",
+    }
+    assert validate(d, DESIGN_SCHEMA) == []

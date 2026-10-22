@@ -164,7 +164,44 @@ def _nhood(**params: object) -> GateContext:
     return ctx("neighborhood_enrichment", {}, act=act)
 
 
+def _summary(**facts: object) -> dict:
+    return {
+        "obj": obj(
+            "analysis_summary",
+            {"n_obs": 0, "n_var": 0, "fields": {}, "counts_per_group": {}, "domain": facts},
+        )
+    }
+
+
+def _scrna(
+    operation: str, facts: dict, phase: str = "pre", ranges: dict | None = None, **params: object
+) -> GateContext:
+    act = action(operation, **params)
+    return ctx(operation, _summary(**facts), phase=phase, ranges=ranges, act=act)
+
+
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    # droplet and combinatorial kits (plugin 0.8.0, benchmark Phase 1)
+    (
+        "sc.qc_floor_above_data",
+        lambda: _scrna("qc_cells", {"n_genes_p99": 150, "n_genes": 386}, min_genes=200),
+        lambda: _scrna("qc_cells", {"n_genes_p99": 150}, min_genes=20),
+    ),
+    (
+        "sc.normalization_depth",
+        lambda: _scrna("normalize", {"median_umis_per_cell": 1655}, method="log_total"),
+        lambda: _scrna("normalize", {"median_umis_per_cell": 1655}, method="pearson_residuals"),
+    ),
+    (
+        "sc.pc1_single_gene",
+        lambda: _scrna("reduce_pca", {"pc1_top_abs_load": 0.93}, phase="post", scale=False),
+        lambda: _scrna("reduce_pca", {"pc1_top_abs_load": 0.12}, phase="post", scale=True),
+    ),
+    (
+        "sc.pca_depth_confounded",
+        lambda: _scrna("reduce_pca", {"max_top5_depth_corr": 0.81}, phase="post"),
+        lambda: _scrna("reduce_pca", {"max_top5_depth_corr": 0.2}, phase="post"),
+    ),
     # the downstream tools (plugin 0.7.0, L54)
     (
         "de.replication_unit",
@@ -775,3 +812,41 @@ def test_neighbourhood_variants() -> None:
         act=action("neighborhood_enrichment", radius_um=30, n_perms=200),
     )
     assert _run("spatial.no_permutation_null", c) is True
+
+
+def test_scrna_predicates_read_the_policy_and_the_latest_summary() -> None:
+    """Plugin 0.8.0: the floors and ceilings come from policy ranges; a missing fact is silence;
+    the evidence names the floor and the data."""
+    pid = "sc.normalization_depth"
+    assert (
+        _run(pid, _scrna("normalize", {"median_umis_per_cell": 4000}, method="log_total")) is False
+    )
+    c = _scrna(
+        "normalize",
+        {"median_umis_per_cell": 4000},
+        ranges={"sc.lognorm_min_median_umis": {"standard": [5000, 1e9]}},
+        method="log_total",
+    )
+    assert _run(pid, c) is True
+    assert _run(pid, _scrna("select_hvg", {"median_umis_per_cell": 900}, flavor="seurat")) is True
+    assert (
+        _run(pid, _scrna("select_hvg", {"median_umis_per_cell": 900}, flavor="seurat_v3")) is False
+    )
+    assert _run(pid, _scrna("normalize", {}, method="log_total")) is False
+    c = _scrna(
+        "reduce_pca",
+        {"pc1_top_abs_load": 0.4},
+        phase="post",
+        ranges={"sc.pc1_top_abs_load": {"standard": [0, 0.3]}},
+    )
+    assert _run("sc.pc1_single_gene", c) is True
+    assert (
+        _run(
+            "sc.qc_floor_above_data", _scrna("qc_cells", {"total_counts_p99": 400}, min_counts=1000)
+        )
+        is True
+    )
+    v = registry.get("sc.qc_floor_above_data").fn(  # type: ignore[union-attr]
+        _scrna("qc_cells", {"n_genes_p99": 150, "n_genes": 386}, min_genes=200)
+    )
+    assert v.evidence == {"min_genes": 200.0, "n_genes_p99": 150.0, "n_genes": 386}

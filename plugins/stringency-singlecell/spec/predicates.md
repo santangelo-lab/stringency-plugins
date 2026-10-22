@@ -20,6 +20,10 @@
 | `test.assumptions_unchecked` | pre | the same | flag | `min_samples_per_group` below the floor (`ranges.test.min_samples_per_group[<band>][0]`, else 2) or `min_cells_per_sample` of 0: the test's dispersion has nothing to stand on | `*.min_samples_per_group` |
 | `spatial.neighborhood_undeclared` | pre | `neighborhood_enrichment` | block | no positive `radius_um`, `radius`, `k`, `n_neighs` or `n_neighbors` among the step's parameters: the neighbourhood's scale is implicit | `neighborhood_enrichment.radius_um` |
 | `spatial.no_permutation_null` | pre | `neighborhood_enrichment` | block | `n_perms` absent, zero or below the floor (`ranges.spatial.n_perms[<band>][0]`, else 100) | `neighborhood_enrichment.n_perms` |
+| `sc.qc_floor_above_data` | pre | `qc_cells` | block | `min_genes` above the data's `n_genes_p99` or `min_counts` above `total_counts_p99` (facts the QC metrics step wrote into an `analysis_summary`): a whole-transcriptome floor on a targeted panel (0.8.0, benchmark Phase 1) | `qc_cells.min_genes`, `.min_counts` |
+| `sc.normalization_depth` | pre | `normalize`, `select_hvg` | flag | a log-based method or flavour proposed when `median_umis_per_cell` is below `ranges.sc.lognorm_min_median_umis[<band>][0]`, else 2000 | `normalize.method`, `select_hvg.flavor` |
+| `sc.pc1_single_gene` | post | `reduce_pca` | flag | `pc1_top_abs_load` above `ranges.sc.pc1_top_abs_load[<band>][1]`, else 0.5: PC1 is one gene (no per-gene scaling) | `reduce_pca.scale` |
+| `sc.pca_depth_confounded` | post | `reduce_pca` | flag | `max_top5_depth_corr` above `ranges.sc.max_top5_depth_corr[<band>][1]`, else 0.5: a top PC tracks sequencing depth | `reduce_pca.regress_out` |
 
 The first four read `ctx.state.objects[*].summary.domain` only; `sc.exclusion_proposed` reads
 `ctx.output.consensus`; the 2026-10-07 four read `ctx.action` (decision points) or the latest

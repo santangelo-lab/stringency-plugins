@@ -15,6 +15,7 @@ from stringency_singlecell.predicates import (  # noqa: F401
     join,
     objects,
     outliers,
+    scrna,
     spatial,
 )
 

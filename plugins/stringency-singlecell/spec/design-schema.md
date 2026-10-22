@@ -13,7 +13,7 @@ source: "..."   # optional; a manual declaration says where it came from
 notes: "..."
 ```
 
-Rules the schema enforces: `observation` is `cell`; `sample` required; any further unit is a
+Rules the schema enforces: `observation` is any unit name (`cell`, `nucleus`, `spot`, `bead`; `punch` for punch-level tables; 0.8.0, before it `cell` or `punch`); `sample` required; any further unit is a
 column name; every factor has a column and at least one level (a contrast-bearing factor needs
 two, which `init.contrast_undeclared` / `init.level_undeclared` catch at init); `batch` unique;
 `replication_unit` required; no unknown top-level keys. Rules the tests enforce beyond JSON

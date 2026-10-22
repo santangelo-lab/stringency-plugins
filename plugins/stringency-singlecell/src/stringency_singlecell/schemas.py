@@ -31,9 +31,10 @@ DESIGN_SCHEMA: dict[str, Any] = {
             "type": "object",
             "required": ["observation", "sample"],
             "properties": {
-                # cell for object-level projects; punch for punch-level tables (the QC summary
-                # and the outlier judgment read one row per punch)
-                "observation": {"enum": ["cell", "punch"]},
+                # the row of the object: cell, nucleus, spot or bead for object-level projects;
+                # punch for punch-level tables (the QC summary and the outlier judgment read one
+                # row per punch). Any name from 0.8.0: the plugin is not Xenium's alone.
+                "observation": {"type": "string", "minLength": 1},
                 "sample": {"type": "string", "minLength": 1},
             },
             "additionalProperties": {"type": "string", "minLength": 1},
@@ -336,6 +337,138 @@ OPERATIONS["infer_cell_communication"] = {
     },
     "additionalProperties": False,
 }
+
+# 0.8.0 (2026-10-22): droplet and combinatorial kits, for the benchmark's scRNA-seq method
+# (engine `benchmark-plan.md`, Phase 1). The Xenium operations gain the parameters a scanpy
+# method takes; `qc_metrics` and `score_panels` are new; `replicate_unit` is any unit of the
+# design (animal, donor) or a finer one, which `de.replication_unit` judges.
+OPERATIONS["qc_cells"]["properties"].update(
+    {
+        "min_genes": {**_INT, "description": "minimum genes detected per cell"},
+        "max_genes": {**_INT, "description": "maximum genes detected per cell (0 for none)"},
+        "min_counts": {**_INT, "description": "minimum total counts per cell"},
+        "max_pct_mt": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "maximum percent mitochondrial counts (100 for none)",
+        },
+        "mt_prefix": {
+            "type": "string",
+            "description": "the gene-symbol prefix that marks mitochondrial genes (MT-, mt-)",
+        },
+        "keep_column": {
+            "type": "string",
+            "description": "an obs column to restrict cells by (empty for none)",
+        },
+        "keep_value": {"type": "string", "description": "the value of keep_column to keep"},
+    }
+)
+OPERATIONS["normalize"]["properties"]["method"] = {
+    "type": "string",
+    "enum": ["logarea", "log_total", "pearson_residuals"],
+    "description": (
+        "LogArea (counts per cell area x scale_factor, log1p), library-size log1p, or analytic "
+        "Pearson residuals (depth-aware)"
+    ),
+}
+OPERATIONS["normalize"]["properties"].update(
+    {
+        "target_sum": {
+            **_NUM,
+            "minimum": 0,
+            "description": "library size each cell is scaled to before log1p (0 keeps the median)",
+        },
+        "exclude_highly_expressed": {
+            "type": "boolean",
+            "description": "leave the most abundant genes out of the size factor",
+        },
+    }
+)
+OPERATIONS["reduce_pca"]["properties"].update(
+    {
+        "scale": {"type": "boolean", "description": "standardise each gene before PCA"},
+        "regress_out": {
+            "type": "string",
+            "description": "comma-separated obs columns regressed out before PCA, empty for none",
+        },
+        "n_comps": {**_INT, "description": "principal components computed"},
+        "use_hvg": {"type": "boolean", "description": "restrict PCA to the highly variable genes"},
+    }
+)
+OPERATIONS["select_hvg"] = {
+    "type": "object",
+    "properties": {
+        "n_top_genes": {**_INT, "description": "highly variable genes to keep"},
+        "flavor": {
+            "type": "string",
+            "enum": ["seurat", "cell_ranger", "seurat_v3", "pearson_residuals"],
+            "description": (
+                "scanpy flavour: seurat and cell_ranger on log data; seurat_v3 and "
+                "pearson_residuals on counts (depth-aware)"
+            ),
+        },
+        "min_cells": {**_INT, "description": "genes detected in fewer cells are dropped first"},
+        "batch_key": {
+            "type": "string",
+            "description": "obs column the selection is stratified by (empty for none)",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["cluster"] = {
+    "type": "object",
+    "properties": {
+        "n_neighbors": {**_INT, "description": "neighbours in the kNN graph"},
+        "n_pcs": {**_INT, "description": "principal components the graph uses"},
+        "resolution": {**_NUM, "minimum": 0, "description": "Leiden resolution"},
+        "algorithm": {
+            "type": "string",
+            "enum": ["leiden", "louvain"],
+            "description": "community detection",
+        },
+        "seed": {**_INT, "description": "random seed"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["qc_metrics"] = {
+    "type": "object",
+    "properties": {
+        "mt_prefix": {
+            "type": "string",
+            "description": "the gene-symbol prefix that marks mitochondrial genes",
+        },
+        "symbol_column": {
+            "type": "string",
+            "description": "var column holding gene symbols (empty: the index)",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["score_panels"] = {
+    "type": "object",
+    "properties": {
+        "panels": {
+            "type": "string",
+            "description": "JSON object lineage -> gene list, the declared marker panels",
+        },
+        "cluster_column": {"type": "string", "description": "obs column holding the clusters"},
+        "symbol_column": {
+            "type": "string",
+            "description": "var column holding gene symbols (empty: the index)",
+        },
+    },
+    "additionalProperties": False,
+}
+for _op in ("test_differential_expression", "compose_cells"):
+    OPERATIONS[_op]["properties"]["replicate_unit"] = {
+        "type": "string",
+        "description": (
+            "what counts as one replicate: a unit of the design (animal, donor) or a finer one "
+            "(punch, cell), which de.replication_unit judges"
+        ),
+    }
+
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)
