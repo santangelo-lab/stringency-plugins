@@ -61,7 +61,7 @@ def qc_floor_above_data(ctx: GateContext) -> Verdict:
 
 @predicate(
     id="sc.normalization_depth",
-    version=1,
+    version=2,
     scope=["normalize", "select_hvg"],
     phase="pre",
     default=Disposition.FLAG,
@@ -74,17 +74,25 @@ def normalization_depth(ctx: GateContext) -> Verdict:
     `ranges.sc.lognorm_min_median_umis[<band>][0]`, else 2000. At that depth the log transform
     inflates the variance of low-count genes and HVG selection picks noise; a depth-aware
     method (Pearson residuals, seurat_v3 on counts) is the alternative the hold names.
-    Evidence: the method or flavour, the median, the floor."""
+    Version 2 (0.8.2): a targeted panel (`is_targeted_panel` true in the facts) is not judged
+    by the whole-transcriptome floor, since a few hundred genes cannot reach it however deep the
+    cells are; the evidence says so and the predicate is silent (the scrnaseq method's first
+    engine run, 2026-10-22, on a 320-gene fixture at a median of 1371 UMIs).
+    Evidence: the method or flavour, the median, the floor, the panel flag."""
     p = ctx.action.parameters
     method = str(p.get("method") or p.get("flavor") or "")
     if method not in ("log_total", "logarea", "seurat", "cell_ranger"):
         return Verdict(False)
-    median = _num(_facts(ctx).get("median_umis_per_cell"))
+    facts = _facts(ctx)
+    median = _num(facts.get("median_umis_per_cell"))
     if median is None:
         return Verdict(False)
     b = band(ctx, "sc.lognorm_min_median_umis")
     floor = float(b[0]) if b else 2000.0
     ev = {"method": method, "median_umis_per_cell": median, "floor": floor}
+    if facts.get("is_targeted_panel") is True:
+        ev["is_targeted_panel"] = True
+        return Verdict(False, None, ev)
     if median < floor:
         return Verdict(
             True,

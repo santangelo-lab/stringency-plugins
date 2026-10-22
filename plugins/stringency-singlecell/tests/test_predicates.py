@@ -829,6 +829,21 @@ def test_scrna_predicates_read_the_policy_and_the_latest_summary() -> None:
     )
     assert _run(pid, c) is True
     assert _run(pid, _scrna("select_hvg", {"median_umis_per_cell": 900}, flavor="seurat")) is True
+    # version 2 (0.8.2): a targeted panel is not judged by the whole-transcriptome floor
+    c = _scrna(
+        "normalize",
+        {"median_umis_per_cell": 1371.5, "is_targeted_panel": True},
+        method="log_total",
+    )
+    assert _run(pid, c) is False
+    v = registry.get(pid).fn(c)  # type: ignore[union-attr]
+    assert v.evidence["is_targeted_panel"] is True and v.evidence["floor"] == 2000.0
+    c = _scrna(
+        "normalize",
+        {"median_umis_per_cell": 1371.5, "is_targeted_panel": False},
+        method="log_total",
+    )
+    assert _run(pid, c) is True
     assert (
         _run(pid, _scrna("select_hvg", {"median_umis_per_cell": 900}, flavor="seurat_v3")) is False
     )
