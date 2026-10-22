@@ -24,7 +24,7 @@ def _uns(summary: dict[str, Any] | None) -> dict[str, Any]:
 
 @predicate(
     id="sc.decision_unreviewed",
-    version=1,
+    version=2,
     scope=["normalize", "cluster_umap"],
     phase="pre",
     default=Disposition.FLAG,
@@ -61,6 +61,11 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
     for name in m.decision_points:
         default: Any = None
         if step is not None and name in step.params:
+            if getattr(step.params[name], "decision", None) is not None:
+                # version 2 (0.8.1): a decision point with a `decision:` block is the engine's
+                # (`param.agent_proposed@2` holds at the default under `hold: always`), so this
+                # predicate retires for it and one hold opens, not two
+                continue
             default = step.params[name].default
         elif name in m.declared_params:
             schema = m.declared_params[name]

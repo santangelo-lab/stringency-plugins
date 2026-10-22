@@ -850,3 +850,71 @@ def test_scrna_predicates_read_the_policy_and_the_latest_summary() -> None:
         _scrna("qc_cells", {"n_genes_p99": 150, "n_genes": 386}, min_genes=200)
     )
     assert v.evidence == {"min_genes": 200.0, "n_genes_p99": 150.0, "n_genes": 386}
+
+
+def test_narrowed_xenium_predicates_leave_a_droplet_method_alone() -> None:
+    """0.8.1: a QC module that declares no qc_object_set is not asked for a join; the retained
+    count of a droplet QC step feeds low_cell_count; a decision point with a `decision:` block
+    is the engine's and decision_unreviewed skips it."""
+    from stringency.modules import ModuleManifest
+    from stringency.pipelines import Pipeline
+
+    droplet = ModuleManifest(
+        contract=1,
+        name="qc-cells",
+        version="0.1.0",
+        kind="deterministic",
+        operation="qc_cells",
+        domain="stringency-singlecell",
+        env="scanpy-agent",
+        outputs={"qc_object": {"type": "anndata", "format": "h5ad"}},
+        params_schema={"type": "object", "properties": {}},
+    )
+    c = ctx("qc_cells", {}, phase="post", module=droplet)
+    assert _run("sc.area_join_unverified", c) is False
+    xen = ModuleManifest(
+        contract=1,
+        name="qc-cells",
+        version="0.1.0",
+        kind="deterministic",
+        operation="qc_cells",
+        domain="stringency-singlecell",
+        env="xenium-r",
+        outputs={"qc_objects": {"type": "qc_object_set", "format": "dir"}},
+        params_schema={"type": "object", "properties": {}},
+    )
+    assert _run("sc.area_join_unverified", ctx("qc_cells", {}, phase="post", module=xen)) is True
+    few = _summary(n_cells_retained=12, n_cells_in=5000)
+    assert _run("sc.low_cell_count", ctx("qc_cells", few, phase="post")) is True
+    many = _summary(n_cells_retained=4000, n_cells_in=5000)
+    assert _run("sc.low_cell_count", ctx("qc_cells", many, phase="post")) is False
+    # decision_unreviewed: the pipeline gates `method` with a decision block, scale_factor not
+    pipe = Pipeline.model_validate(
+        {
+            "pipeline": 1,
+            "name": "p",
+            "version": "0.1.0",
+            "domain": "stringency-singlecell",
+            "answers": [],
+            "steps": [
+                {
+                    "id": "01_step",
+                    "module": "normalize@0.1.0",
+                    "params": {
+                        "method": {
+                            "default": "logarea",
+                            "options": ["logarea", "log_total"],
+                            "decision": {"evidence": {"text": "x"}, "hold": "always"},
+                        },
+                        "scale_factor": {"default": 100, "range": [10, 10000]},
+                    },
+                }
+            ],
+        }
+    )
+    import dataclasses
+
+    base = _decision({})
+    c2 = dataclasses.replace(base, project=dataclasses.replace(base.project, pipeline=pipe))
+    v = registry.get("sc.decision_unreviewed").fn(c2)  # type: ignore[union-attr]
+    assert v.fired and list(v.evidence["decision_points"]) == ["scale_factor"]

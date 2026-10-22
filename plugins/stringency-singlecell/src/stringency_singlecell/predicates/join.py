@@ -19,7 +19,7 @@ ACCEPTED_METHODS = ("keyed_reindex_on_cell_id",)
 
 @predicate(
     id="sc.area_join_unverified",
-    version=1,
+    version=2,
     scope=["qc_cells"],
     phase="post",
     default=Disposition.BLOCK,
@@ -32,6 +32,11 @@ def area_join_unverified(ctx: GateContext) -> Verdict:
     verification."""
     sets = list(objects_of_type(ctx, "qc_object_set"))
     if not sets:
+        # version 2 (0.8.1): the claim is the Xenium QC module's, which declares a
+        # qc_object_set output; a droplet QC module declares none and makes no join
+        m = ctx.project.module_for(ctx.action.module)
+        if m is not None and not any(o.type == "qc_object_set" for o in m.outputs.values()):
+            return Verdict(False, None, {"objects": []})
         return Verdict(True, "qc_cells produced no qc_object_set with a join verification", {})
     problems = []
     for name, dom in sets:

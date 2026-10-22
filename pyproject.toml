@@ -11,7 +11,7 @@ package = false
 members = ["plugins/*"]
 
 [tool.uv.sources]
-stringency = { git = "https://github.com/santangelo-lab/stringency", tag = "v0.2.19" }
+stringency = { git = "https://github.com/santangelo-lab/stringency", tag = "v0.2.33" }
 stringency-singlecell = { workspace = true }
 
 [dependency-groups]

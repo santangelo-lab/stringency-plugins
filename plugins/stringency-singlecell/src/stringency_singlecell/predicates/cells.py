@@ -22,11 +22,11 @@ def _punches(ctx: GateContext) -> list[tuple[str, dict[str, Any]]]:
 
 @predicate(
     id="sc.low_cell_count",
-    version=1,
+    version=2,
     scope=["split_punches", "qc_cells"],
     phase="post",
     default=Disposition.FLAG,
-    covers=["split_punches.min_transcripts", "split_punches.min_area"],
+    covers=["split_punches.min_transcripts", "split_punches.min_area", "qc_cells.min_genes"],
     source=SOURCE,
 )
 def low_cell_count(ctx: GateContext) -> Verdict:
@@ -41,6 +41,24 @@ def low_cell_count(ctx: GateContext) -> Verdict:
     ]
     if low:
         return Verdict(True, "punch(es) below the cell-count floor", {"floor": floor, "low": low})
+    # version 2 (0.8.1): a droplet QC step writes `n_cells_retained` into an analysis_summary;
+    # below the floor (`sc.min_cells_retained`, else 100) the floors kept almost nothing
+    retained = None
+    for _, dom in objects_of_type(ctx, "analysis_summary"):
+        if "n_cells_retained" in dom:
+            retained = dom["n_cells_retained"]
+    if retained is not None:
+        rb = band(ctx, "sc.min_cells_retained")
+        cell_floor = rb[0] if rb else 100
+        try:
+            if float(retained) < float(cell_floor):
+                return Verdict(
+                    True,
+                    f"{retained} cells retained after QC, below {cell_floor:g}",
+                    {"floor": cell_floor, "n_cells_retained": retained},
+                )
+        except (TypeError, ValueError):
+            pass
     return Verdict(False, None, {"floor": floor, "n_punches": len(_punches(ctx))})
 
 
