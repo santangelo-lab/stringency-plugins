@@ -5,8 +5,8 @@ columns `lineage` and `gene`, one row per gene. A declaration is an input, hashe
 the confirm hold, never a parameter the engine ranges (engine backlog L97). Stdlib only.
 
 usage: extract_marker_panels.py <panels.csv> <design.json>
-Prints the envelope: extractor, type, n_obs (rows), n_var (distinct genes), fields (the
-columns), counts_per_group (empty), and domain: `lineages` (in file order), `n_lineages`,
+Prints the envelope: extractor, type, n_obs (rows), n_var (distinct genes), fields (`header`, the
+columns; not `columns`, which `init.column_missing` reads as the design's table), counts_per_group (empty), and domain: `lineages` (in file order), `n_lineages`,
 `genes_per_lineage` (lineage -> count), `panels` (lineage -> genes), `missing_required_columns`.
 """
 
@@ -36,7 +36,9 @@ def main(argv: list[str]) -> int:
         "type": "marker_panels",
         "n_obs": len(rows),
         "n_var": len({g for gs in panels.values() for g in gs}),
-        "fields": {"columns": columns},
+        # `fields.columns` is reserved for the table the design's columns live in (tma_layout),
+        # which `init.column_missing` checks; a panel file is not that table
+        "fields": {"header": columns},
         "counts_per_group": {},
         "domain": {
             "missing_required_columns": missing,

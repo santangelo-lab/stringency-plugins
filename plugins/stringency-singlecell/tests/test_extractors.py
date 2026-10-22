@@ -745,6 +745,7 @@ def test_extract_marker_panels(tmp_path: Path, design_json: Path) -> None:
     out = run_tool("extract_marker_panels", f, design_json)
     assert out["extractor"] == "sc.marker_panels@1" and out["type"] == "marker_panels"
     assert out["n_obs"] == 4 and out["n_var"] == 3
+    assert out["fields"] == {"header": ["lineage", "gene"]} and "columns" not in out["fields"]
     assert out["domain"]["panels"] == {"T": ["CD3E", "CD3D"], "B": ["MS4A1"]}
     assert (
         out["domain"]["genes_per_lineage"] == {"T": 2, "B": 1} and out["domain"]["n_lineages"] == 2
