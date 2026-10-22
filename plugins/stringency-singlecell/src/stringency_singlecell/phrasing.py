@@ -45,6 +45,13 @@ def echo(
                 f"{summary.get('n_obs')} punches from {dom.get('n_animals')} animals on"
                 f" {dom.get('n_slides')} slides (input {name})"
             )
+        elif t == "marker_panels":
+            gpl = dom.get("genes_per_lineage") or {}
+            parts.append(
+                f"{dom.get('n_lineages')} declared lineage panels, "
+                + ", ".join(f"{k} ({v} genes)" for k, v in gpl.items())
+                + f" (input {name})"
+            )
         elif t == "punch_coordinates":
             parts.append(f"{summary.get('n_obs')} hand-drawn punch polygons (input {name})")
         elif (

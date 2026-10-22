@@ -736,3 +736,23 @@ def test_shuffle_column_tool(tmp_path: Path) -> None:
         s = {r["sample"]: r["timepoint_h"] for r in csv.DictReader(f)}
     # both samples of animal a1 move together; per animal the values are still one each
     assert s["s1"] == s["s2"] and sorted({s["s1"], s["s3"]}) == ["24", "control"]
+
+
+def test_extract_marker_panels(tmp_path: Path, design_json: Path) -> None:
+    """0.8.3: the declared panels as lineage -> genes, duplicates dropped, missing columns named."""
+    f = tmp_path / "panels.csv"
+    f.write_text("lineage,gene\nT,CD3E\nT,CD3D\nT,CD3E\nB,MS4A1\n")
+    out = run_tool("extract_marker_panels", f, design_json)
+    assert out["extractor"] == "sc.marker_panels@1" and out["type"] == "marker_panels"
+    assert out["n_obs"] == 4 and out["n_var"] == 3
+    assert out["domain"]["panels"] == {"T": ["CD3E", "CD3D"], "B": ["MS4A1"]}
+    assert (
+        out["domain"]["genes_per_lineage"] == {"T": 2, "B": 1} and out["domain"]["n_lineages"] == 2
+    )
+    g = tmp_path / "bad.csv"
+    g.write_text("cell_type,marker\nT,CD3E\n")
+    out = run_tool("extract_marker_panels", g, design_json)
+    assert (
+        out["domain"]["missing_required_columns"] == ["lineage", "gene"]
+        and out["domain"]["panels"] == {}
+    )

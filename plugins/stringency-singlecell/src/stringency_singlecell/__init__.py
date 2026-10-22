@@ -24,7 +24,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.8.2"
+VERSION = "0.8.3"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -59,6 +59,8 @@ OBJECT_TYPES = {
     "batch_evidence": _ot("batch_evidence", "extract_batch_evidence"),
     # 0.8.0: a module's named facts (a JSON object), the state envelope for droplet methods
     "analysis_summary": _ot("analysis_summary", "extract_analysis_summary"),
+    # 0.8.3: a person's declared lineage panels (CSV lineage, gene), an input and never a parameter
+    "marker_panels": _ot("marker_panels", "extract_marker_panels"),
 }
 
 TOOLS = {
@@ -76,6 +78,7 @@ TOOLS = {
         "extract_cluster_evidence",
         "extract_batch_evidence",
         "extract_analysis_summary",
+        "extract_marker_panels",
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
         "mix_batches",  # negative-control generator for assess-batch: removes the slide structure of a batch_evidence dir
         "shuffle_column",  # negative-control generator for the open tools (0.6.0): permutes a design column across the units of a table
