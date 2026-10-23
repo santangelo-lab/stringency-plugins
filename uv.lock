@@ -1018,7 +1018,7 @@ dev = [
 
 [[package]]
 name = "stringency-singlecell"
-version = "0.8.4"
+version = "0.8.5"
 source = { editable = "plugins/stringency-singlecell" }
 dependencies = [
     { name = "pydantic" },
