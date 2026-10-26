@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -368,45 +369,48 @@ def test_qc_metrics_table_extractor_on_synthetic(tmp_path) -> None:
     assert out["fields"]["punch_ids"] == ["6-1-Liver", "24-2-Gut-A"]
 
 
-import shutil as _shutil
+def _r_has(*packages: str) -> bool:
+    """Rscript is on the path and loads every one of `packages`."""
+    if shutil.which("Rscript") is None:
+        return False
+    names = ", ".join(json.dumps(p) for p in packages)
+    check = f"quit(status = !all(sapply(c({names}), requireNamespace, quietly = TRUE)))"
+    res = subprocess.run(["Rscript", "-e", check], capture_output=True, check=False)
+    return res.returncode == 0
 
-needs_r = pytest.mark.skipif(
-    _shutil.which("Rscript") is None,
+
+# ten cells, six genes, one design column and one stringency flag; the path is the argument
+SEURAT_R = """
+library(SeuratObject)
+m <- matrix(1:60, nrow = 6, dimnames = list(paste0("g", 1:6), paste0("c", 1:10)))
+obj <- CreateSeuratObject(counts = m, assay = "Xenium")
+obj$timepoint_h <- rep(c("6", "24"), each = 5)
+obj@misc$stringency <- list(normalisation = list(method = "logarea"))
+saveRDS(obj, commandArgs(trailingOnly = TRUE)[1])
+"""
+
+
+@pytest.mark.skipif(
+    not _r_has("SeuratObject", "jsonlite"),
     reason="extract_seurat.R needs Rscript with SeuratObject and jsonlite (the xenium-r image)",
 )
-
-
-@needs_r
 def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
-    """Build a tiny Seurat object in R, run the extractor through the same path the engine uses
-    (Rscript <tool> <object> <design>), and check the envelope keys the anndata extractor also
-    prints."""
-    import json
-    import subprocess
-
-    tools = Path(__file__).resolve().parents[1] / "src" / "stringency_singlecell" / "tools"
+    """The R extractor prints the envelope keys the anndata extractor prints, run the way the
+    engine runs it (Rscript <tool> <object> <design>)."""
     rds = tmp_path / "obj.rds"
-    r = f"""
-    suppressPackageStartupMessages(library(SeuratObject))
-    m <- matrix(rpois(60, 3), nrow = 6, dimnames = list(paste0("g", 1:6), paste0("c", 1:10)))
-    obj <- CreateSeuratObject(CreateAssay5Object(counts = as(m, "dgCMatrix")), assay = "Xenium")
-    obj$punch_id <- rep(c("6-1-Liver", "24-1-Liver"), each = 5); obj$animal <- rep(c("6-1", "24-1"), each = 5)
-    obj$timepoint_h <- rep(c("6", "24"), each = 5); obj$condition <- "CLP"; obj$slide <- "0076581"; obj$cell_area <- runif(10, 20, 60)
-    Misc(obj, slot = "stringency") <- list(normalisation = list(method = "logarea", scale_factor = 100))
-    saveRDS(obj, "{rds}")
-    """
-    subprocess.run(["Rscript", "-e", r], check=True)
-    out = subprocess.run(
-        ["Rscript", str(tools / "extract_seurat.R"), str(rds), str(design_json)],
-        check=True,
+    subprocess.run(["Rscript", "-e", SEURAT_R, str(rds)], check=True, capture_output=True)
+    res = subprocess.run(
+        ["Rscript", str(TOOLS["extract_seurat"].script), str(rds), str(design_json)],
         capture_output=True,
         text=True,
-    ).stdout
-    env = json.loads(out)
+        check=False,
+    )
+    assert res.returncode == 0, res.stderr
+    env = json.loads(res.stdout)
     assert env["extractor"] == "sc.seurat_object@1" and env["type"] == "seurat_object"
     assert env["n_obs"] == 10 and env["n_var"] == 6
     assert set(env["fields"]) == {"obs", "obsm", "layers", "uns_flags"}
-    assert "cell_area" in env["fields"]["obs"] and "counts" in env["fields"]["layers"]
+    assert "timepoint_h" in env["fields"]["obs"] and "counts" in env["fields"]["layers"]
     assert env["fields"]["uns_flags"]["normalisation"]["method"] == "logarea"
     assert env["counts_per_group"]["timepoint_h"]["6"]["observation"] == 5
 
