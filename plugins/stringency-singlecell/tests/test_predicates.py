@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
+from stringency.modules import ModuleManifest
 from stringency.plugins import load_plugins
 from stringency.predicates import GateContext, registry
 from stringency.predicates.context import OutputBundle
@@ -398,7 +399,8 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
     ),
     (
         "sc.louvain_too_large",
-        # the Lyons v2 spleen's 1.57 M cells at the default method, then with Leiden proposed
+        # the Lyons v2 spleen's 1.57 M cells at the default method of a module that declares
+        # cluster_method, then with Leiden proposed
         lambda: _louvain(1_570_000),
         lambda: _louvain(1_570_000, cluster_method="igraph_leiden"),
     ),
@@ -1105,28 +1107,62 @@ def test_fine_label_uncited_skips_abstained_invalid_and_empty() -> None:
     assert not _uncited(no_tables).fired
 
 
-# --- louvain_too_large (0.8.6) ----------------------------------------------------------------
+# --- louvain_too_large (0.8.6; version 2 in 0.8.7) --------------------------------------------
+
+
+def _clustering_module(name: str, *, cluster_method: bool) -> ModuleManifest:
+    """A module of the cluster_umap operation shaped like the Xenium method's cluster-umap
+    (declares cluster_method) or select-resolution (does not)."""
+    props: dict = {"ndim": {"type": "integer"}}
+    if cluster_method:
+        props["cluster_method"] = {
+            "type": "string",
+            "enum": ["seurat_louvain", "igraph_leiden"],
+            "default": "seurat_louvain",
+        }
+    return ModuleManifest(
+        contract=1,
+        name=name,
+        version="0.1.0",
+        kind="deterministic",
+        operation="cluster_umap",
+        domain="stringency-singlecell",
+        env="xenium-r",
+        params_schema={"type": "object", "properties": props},
+    )
+
+
+CLUSTER_UMAP = _clustering_module("cluster-umap", cluster_method=True)
+SELECT_RESOLUTION = _clustering_module("select-resolution", cluster_method=False)
 
 
 def _louvain(
     n_obs: int | None,
     *,
+    module: ModuleManifest | None = CLUSTER_UMAP,
     others: dict | None = None,
     ranges: dict | None = None,
     bound: bool = True,
     **params: object,
 ) -> GateContext:
-    """A cluster_umap proposal whose input `object` is bound, by digest, to a seurat_object in
-    the state with `n_obs` cells (no `n_obs` key when None); `others` are further objects."""
+    """A cluster_umap proposal by `module` (None: a manifest the project does not hold) whose
+    input `object` is bound, by digest, to a seurat_object in the state with `n_obs` cells (no
+    `n_obs` key when None); `others` are further objects."""
     summary = _seurat(n_obs=n_obs or 0)
     if n_obs is None:
         del summary["n_obs"]
     reduced = obj("seurat_object", summary)
     act = action("cluster_umap", "04_cluster", **params)
+    if module is not None:
+        act = replace(act, module=module.ref)
     if bound:
         act = replace(act, inputs={"object": reduced.digest})
     return ctx(
-        "cluster_umap", {"reduced_object": reduced, **(others or {})}, act=act, ranges=ranges
+        "cluster_umap",
+        {"reduced_object": reduced, **(others or {})},
+        act=act,
+        ranges=ranges,
+        module=module,
     )
 
 
@@ -1172,3 +1208,15 @@ def test_louvain_too_large_unreadable_count_is_not_judged() -> None:
         v = _louvain_verdict(c)
         assert not v.fired
         assert v.evidence["n_cells"] is None and "not in the state" in v.evidence["note"]
+
+
+def test_louvain_too_large_judges_only_a_module_with_cluster_method() -> None:
+    """Version 2: select-resolution shares the cluster_umap operation, reads the clustered
+    object and never clusters; version 1 flagged it as Louvain on a large organ."""
+    v = _louvain_verdict(_louvain(1_570_000, module=SELECT_RESOLUTION))
+    assert not v.fired
+    assert v.evidence["module"] == "select-resolution@0.1.0"
+    assert "declares no cluster_method" in v.evidence["note"]
+    unknown = _louvain_verdict(_louvain(1_570_000, module=None))
+    assert not unknown.fired and "not in the project" in unknown.evidence["note"]
+    assert _louvain_verdict(_louvain(1_570_000, module=CLUSTER_UMAP)).fired

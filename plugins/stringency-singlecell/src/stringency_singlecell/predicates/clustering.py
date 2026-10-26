@@ -32,7 +32,7 @@ def _input_cells(ctx: GateContext) -> int | None:
 
 @predicate(
     id="sc.louvain_too_large",
-    version=1,
+    version=2,
     scope=["cluster_umap"],
     phase="pre",
     default=Disposition.FLAG,
@@ -41,17 +41,33 @@ def _input_cells(ctx: GateContext) -> int | None:
 )
 def louvain_too_large(ctx: GateContext) -> Verdict:
     """The clustering step would run Seurat's Louvain on more cells than Louvain finishes in
-    reasonable time (`sc.louvain_max_cells` upper bound, else 600,000). Fires when the proposed
-    `cluster_method` is `seurat_louvain`, or absent since that is the module's default, and the
-    `n_obs` the extractor recorded for the step's input `seurat_object` is above the threshold.
-    Louvain's time grows much faster than the number of cells: on the Lyons v2 spleen (1.57
-    million cells) it ran more than six hours without finishing a resolution, and the Xenium
-    method's `docs/tissue-defaults.md` recommends `igraph_leiden` above about 600,000 cells.
-    Flag: a person decides at the proposal rather than after hours of compute. A count that
-    cannot be read is not judged and the evidence says so. Evidence: n_cells, threshold,
-    cluster_method."""
+    reasonable time (`sc.louvain_max_cells` upper bound, else 600,000). Fires when the step's
+    module declares a `cluster_method` parameter, the proposed value is `seurat_louvain` (or
+    absent, since that is the module's default), and the `n_obs` the extractor recorded for the
+    step's input `seurat_object` is above the threshold. Louvain's time grows much faster than
+    the number of cells: on the Lyons v2 spleen (1.57 million cells) it ran more than six hours
+    without finishing a resolution, and the Xenium method's `docs/tissue-defaults.md` recommends
+    `igraph_leiden` above about 600,000 cells. Flag: a person decides at the proposal rather
+    than after hours of compute. A module without `cluster_method` is not judged: version 2
+    (0.8.7), since the Xenium method's `select-resolution` shares the `cluster_umap` operation
+    and only sets the identity from a stored column (version 1 flagged it as Louvain). A count
+    that cannot be read is not judged either; the evidence says which. Evidence: n_cells,
+    threshold, cluster_method."""
     rng = band(ctx, "sc.louvain_max_cells")
     threshold = rng[1] if rng and len(rng) > 1 else DEFAULT_LOUVAIN_MAX_CELLS
+    m = ctx.project.module_for(ctx.action.module)
+    if m is None or "cluster_method" not in m.declared_params:
+        return Verdict(
+            False,
+            None,
+            {
+                "module": ctx.action.module,
+                "threshold": threshold,
+                "note": "the module declares no cluster_method parameter"
+                if m is not None
+                else "the module's manifest is not in the project",
+            },
+        )
     method = ctx.action.parameters.get("cluster_method") or "seurat_louvain"
     n_cells = _input_cells(ctx)
     ev: dict[str, Any] = {"n_cells": n_cells, "threshold": threshold, "cluster_method": method}
