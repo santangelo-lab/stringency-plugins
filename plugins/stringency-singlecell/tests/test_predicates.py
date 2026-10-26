@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 
 import pytest
 from stringency.plugins import load_plugins
@@ -394,6 +395,12 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
                 )
             ]
         ),
+    ),
+    (
+        "sc.louvain_too_large",
+        # the Lyons v2 spleen's 1.57 M cells at the default method, then with Leiden proposed
+        lambda: _louvain(1_570_000),
+        lambda: _louvain(1_570_000, cluster_method="igraph_leiden"),
     ),
 ]
 
@@ -1096,3 +1103,72 @@ def test_fine_label_uncited_skips_abstained_invalid_and_empty() -> None:
     assert not _uncited(_fine([_rec("9", "enterocyte", "")])).fired
     no_tables = ctx("annotate_clusters", {}, phase="post", output=OutputBundle(outputs={}))
     assert not _uncited(no_tables).fired
+
+
+# --- louvain_too_large (0.8.6) ----------------------------------------------------------------
+
+
+def _louvain(
+    n_obs: int | None,
+    *,
+    others: dict | None = None,
+    ranges: dict | None = None,
+    bound: bool = True,
+    **params: object,
+) -> GateContext:
+    """A cluster_umap proposal whose input `object` is bound, by digest, to a seurat_object in
+    the state with `n_obs` cells (no `n_obs` key when None); `others` are further objects."""
+    summary = _seurat(n_obs=n_obs or 0)
+    if n_obs is None:
+        del summary["n_obs"]
+    reduced = obj("seurat_object", summary)
+    act = action("cluster_umap", "04_cluster", **params)
+    if bound:
+        act = replace(act, inputs={"object": reduced.digest})
+    return ctx(
+        "cluster_umap", {"reduced_object": reduced, **(others or {})}, act=act, ranges=ranges
+    )
+
+
+def _louvain_verdict(c: GateContext):
+    return registry.get("sc.louvain_too_large").fn(c)  # type: ignore[union-attr]
+
+
+def test_louvain_too_large_reason_and_evidence() -> None:
+    v = _louvain_verdict(_louvain(1_570_000))
+    assert v.fired
+    assert "1,570,000" in v.reason and "600,000" in v.reason
+    assert "cluster_method=igraph_leiden" in v.reason
+    assert v.evidence == {
+        "n_cells": 1_570_000,
+        "threshold": 600_000,
+        "cluster_method": "seurat_louvain",
+    }
+    explicit = _louvain_verdict(_louvain(1_570_000, cluster_method="seurat_louvain"))
+    assert explicit.fired and explicit.evidence["cluster_method"] == "seurat_louvain"
+
+
+def test_louvain_too_large_at_and_below_the_threshold() -> None:
+    assert not _louvain_verdict(_louvain(600_000)).fired
+    assert _louvain_verdict(_louvain(600_001)).fired
+    small = _louvain_verdict(_louvain(250_000))
+    assert not small.fired and small.evidence["n_cells"] == 250_000
+
+
+def test_louvain_too_large_reads_the_policy_band() -> None:
+    ranges = {"sc.louvain_max_cells": {"standard": [0, 1_000_000]}}
+    assert not _louvain_verdict(_louvain(800_000, ranges=ranges)).fired
+    v = _louvain_verdict(_louvain(1_200_000, ranges=ranges))
+    assert v.fired and v.evidence["threshold"] == 1_000_000 and "1,000,000" in v.reason
+
+
+def test_louvain_too_large_reads_the_bound_input_not_another_object() -> None:
+    spleen = {"merged_object": obj("seurat_object", _seurat(n_obs=1_570_000, n_var=5000))}
+    assert not _louvain_verdict(_louvain(250_000, others=spleen)).fired
+
+
+def test_louvain_too_large_unreadable_count_is_not_judged() -> None:
+    for c in (_louvain(None), _louvain(1_570_000, bound=False)):
+        v = _louvain_verdict(c)
+        assert not v.fired
+        assert v.evidence["n_cells"] is None and "not in the state" in v.evidence["note"]
