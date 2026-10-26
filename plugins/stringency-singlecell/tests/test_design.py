@@ -123,9 +123,11 @@ def test_plugin_surface() -> None:
         "sc.exclusion_proposed",
         "sc.export_mismatch",
         "sc.decision_unreviewed",
+        "sc.louvain_too_large",  # 0.8.6
         "sc.batch_effect_suspected",
         "sc.batch_route_review",
         "sc.unknown_fraction",
+        "sc.fine_label_uncited",  # 0.8.5
         "qc.filter_ordering",
         # the downstream seven (0.7.0, engine backlog L54)
         "de.replication_unit",

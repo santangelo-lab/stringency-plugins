@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 
 import pytest
 from stringency.plugins import load_plugins
@@ -369,6 +370,37 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
             {"qc": obj("qc_object_set", qc_summary([("24-2-Liver", 9000, 8500)]))},
             phase="post",
         ),
+    ),
+    (
+        "sc.fine_label_uncited",
+        # names Isg15, cites only Vil1 for its cluster
+        lambda: _fine(
+            [
+                _rec(
+                    "9",
+                    "enterocyte",
+                    "Isg15+ interferon",
+                    _ref("canonical_markers", "Vil1", "avg_9"),
+                )
+            ]
+        ),
+        lambda: _fine(
+            [
+                _rec(
+                    "22",
+                    "unknown",
+                    "brown adipocyte (Ucp1 Cidea)",
+                    _ref("markers_top", "22:1", "gene"),
+                    _ref("markers_top", "22:2", "pct_diff"),
+                )
+            ]
+        ),
+    ),
+    (
+        "sc.louvain_too_large",
+        # the Lyons v2 spleen's 1.57 M cells at the default method, then with Leiden proposed
+        lambda: _louvain(1_570_000),
+        lambda: _louvain(1_570_000, cluster_method="igraph_leiden"),
     ),
 ]
 
@@ -933,3 +965,210 @@ def test_narrowed_xenium_predicates_leave_a_droplet_method_alone() -> None:
     c2 = dataclasses.replace(base, project=dataclasses.replace(base.project, pipeline=pipe))
     v = registry.get("sc.decision_unreviewed").fn(c2)  # type: ignore[union-attr]
     assert v.fired and list(v.evidence["decision_points"]) == ["scale_factor"]
+
+
+# --- fine_label_uncited: whose citations count -------------------------------------------------
+
+
+def _ref(table: str, row: str, column: str) -> dict:
+    return {"table": table, "row": row, "column": column, "value": "x"}
+
+
+def _rec(
+    item: str, label: str | None, fine: str | None, *refs: dict, abstain: bool = False
+) -> dict:
+    return {
+        "item_id": item,
+        "label": label,
+        "fine_label": fine,
+        "abstain": abstain,
+        "confidence": "abstain" if abstain else "high",
+        "supporting_evidence": list(refs),
+        "contradicting_evidence": [],
+        "rationale": "r",
+    }
+
+
+def _table(name: str, key: str, rows: dict[str, dict[str, str]]):
+    from stringency.predicates.context import EvidenceTable
+
+    cols = tuple(dict.fromkeys(c for r in rows.values() for c in r))
+    return EvidenceTable(name=name, key_column=key, columns=cols, rows=rows)
+
+
+def _fine(*replicates: list[dict], valid: tuple[bool, ...] | None = None) -> GateContext:
+    """The annotation judgment's four evidence tables in the shape `annotate-clusters` writes
+    them, two clusters (9, 22), and one replicate per record list."""
+    tables = {
+        "cluster_summary": _table(
+            "cluster_summary",
+            "cluster",
+            {
+                "9": {"cluster": "9", "top_markers": "Isg15;Ifit1;Fabp1"},
+                "22": {"cluster": "22", "top_markers": "Ucp1;Cidea"},
+            },
+        ),
+        "markers_top": _table(
+            "markers_top",
+            "marker_id",
+            {
+                "9:1": {"marker_id": "9:1", "cluster": "9", "gene": "Isg15", "pct_diff": "0.12"},
+                "9:2": {"marker_id": "9:2", "cluster": "9", "gene": "Ifit1", "pct_diff": "0.08"},
+                "22:1": {"marker_id": "22:1", "cluster": "22", "gene": "Ucp1", "pct_diff": "0.61"},
+                "22:2": {"marker_id": "22:2", "cluster": "22", "gene": "Cidea", "pct_diff": "0.55"},
+            },
+        ),
+        "canonical_markers": _table(
+            "canonical_markers",
+            "gene",
+            {
+                "Vil1": {
+                    "gene": "Vil1",
+                    "lineage": "epithelial",
+                    "avg_9": "0.91",
+                    "avg_22": "0.02",
+                },
+                "Adipoq": {"gene": "Adipoq", "lineage": "stromal", "avg_9": "0.01", "avg_22": "1"},
+            },
+        ),
+        "organ_guide": _table(
+            "organ_guide",
+            "label",
+            {"enterocyte": {"label": "enterocyte", "markers_in_panel": "Vil1"}},
+        ),
+    }
+    out = OutputBundle(
+        outputs={},
+        replicates=tuple({"items": list(r)} for r in replicates),
+        replicate_valid=valid or tuple(True for _ in replicates),
+        evidence_tables=tables,
+        items=("9", "22"),
+    )
+    return ctx("annotate_clusters", {}, phase="post", output=out)
+
+
+def _uncited(c: GateContext):
+    return registry.get("sc.fine_label_uncited").fn(c)  # type: ignore[union-attr]
+
+
+def test_fine_label_uncited_counts_only_citations_about_its_own_cluster() -> None:
+    other_row = _rec("9", "unknown", "Ucp1-high", _ref("markers_top", "22:1", "gene"))
+    other_column = _rec("9", "unknown", "Adipoq+", _ref("canonical_markers", "Adipoq", "avg_22"))
+    no_column = _rec("9", "enterocyte", "Vil1+", _ref("canonical_markers", "Vil1", "lineage"))
+    guide = _rec("9", "enterocyte", "Vil1+", _ref("organ_guide", "enterocyte", "markers_in_panel"))
+    for rec in (other_row, other_column, no_column, guide):
+        assert _uncited(_fine([rec])).fired, rec["fine_label"]
+    own_column = _rec("9", "enterocyte", "Vil1+", _ref("canonical_markers", "Vil1", "avg_9"))
+    listed = _rec("9", "enterocyte", "Ifit1 high", _ref("cluster_summary", "9", "top_markers"))
+    own_row = _rec("9", "enterocyte", "Isg15+", _ref("markers_top", "9:1", "pct_diff"))
+    for rec in (own_column, listed, own_row):
+        assert not _uncited(_fine([rec])).fired, rec["fine_label"]
+
+
+def test_fine_label_uncited_words_case_and_evidence() -> None:
+    # words that are not symbols are not this predicate's: a state needs the programme evidence
+    v = _uncited(_fine([_rec("9", "enterocyte", "IFN/stress")]))
+    assert not v.fired and v.evidence["fine_labels_with_genes"] == 0
+    # a token with a digit matches regardless of case
+    upper = _rec("22", "unknown", "UCP1 high", _ref("markers_top", "22:1", "gene"))
+    assert not _uncited(_fine([upper])).fired
+    v = _uncited(
+        _fine(
+            [_rec("22", "unknown", "brown fat", _ref("markers_top", "22:1", "gene"))],
+            [
+                _rec(
+                    "9",
+                    "enterocyte",
+                    "ISG15 and Ifit1, Vil1",
+                    _ref("canonical_markers", "Vil1", "avg_9"),
+                )
+            ],
+        )
+    )
+    assert v.fired
+    assert v.evidence["uncited"] == [
+        {
+            "replicate": 2,
+            "item": "9",
+            "fine_label": "ISG15 and Ifit1, Vil1",
+            "genes": ["Isg15", "Ifit1"],
+        }
+    ]
+
+
+def test_fine_label_uncited_skips_abstained_invalid_and_empty() -> None:
+    bad = _rec("9", "enterocyte", "Isg15+")
+    assert not _uncited(_fine([_rec("9", None, "Isg15+", abstain=True)])).fired
+    assert not _uncited(_fine([bad], [_rec("9", "enterocyte", None)], valid=(False, True))).fired
+    assert not _uncited(_fine([_rec("9", "enterocyte", "")])).fired
+    no_tables = ctx("annotate_clusters", {}, phase="post", output=OutputBundle(outputs={}))
+    assert not _uncited(no_tables).fired
+
+
+# --- louvain_too_large (0.8.6) ----------------------------------------------------------------
+
+
+def _louvain(
+    n_obs: int | None,
+    *,
+    others: dict | None = None,
+    ranges: dict | None = None,
+    bound: bool = True,
+    **params: object,
+) -> GateContext:
+    """A cluster_umap proposal whose input `object` is bound, by digest, to a seurat_object in
+    the state with `n_obs` cells (no `n_obs` key when None); `others` are further objects."""
+    summary = _seurat(n_obs=n_obs or 0)
+    if n_obs is None:
+        del summary["n_obs"]
+    reduced = obj("seurat_object", summary)
+    act = action("cluster_umap", "04_cluster", **params)
+    if bound:
+        act = replace(act, inputs={"object": reduced.digest})
+    return ctx(
+        "cluster_umap", {"reduced_object": reduced, **(others or {})}, act=act, ranges=ranges
+    )
+
+
+def _louvain_verdict(c: GateContext):
+    return registry.get("sc.louvain_too_large").fn(c)  # type: ignore[union-attr]
+
+
+def test_louvain_too_large_reason_and_evidence() -> None:
+    v = _louvain_verdict(_louvain(1_570_000))
+    assert v.fired
+    assert "1,570,000" in v.reason and "600,000" in v.reason
+    assert "cluster_method=igraph_leiden" in v.reason
+    assert v.evidence == {
+        "n_cells": 1_570_000,
+        "threshold": 600_000,
+        "cluster_method": "seurat_louvain",
+    }
+    explicit = _louvain_verdict(_louvain(1_570_000, cluster_method="seurat_louvain"))
+    assert explicit.fired and explicit.evidence["cluster_method"] == "seurat_louvain"
+
+
+def test_louvain_too_large_at_and_below_the_threshold() -> None:
+    assert not _louvain_verdict(_louvain(600_000)).fired
+    assert _louvain_verdict(_louvain(600_001)).fired
+    small = _louvain_verdict(_louvain(250_000))
+    assert not small.fired and small.evidence["n_cells"] == 250_000
+
+
+def test_louvain_too_large_reads_the_policy_band() -> None:
+    ranges = {"sc.louvain_max_cells": {"standard": [0, 1_000_000]}}
+    assert not _louvain_verdict(_louvain(800_000, ranges=ranges)).fired
+    v = _louvain_verdict(_louvain(1_200_000, ranges=ranges))
+    assert v.fired and v.evidence["threshold"] == 1_000_000 and "1,000,000" in v.reason
+
+
+def test_louvain_too_large_reads_the_bound_input_not_another_object() -> None:
+    spleen = {"merged_object": obj("seurat_object", _seurat(n_obs=1_570_000, n_var=5000))}
+    assert not _louvain_verdict(_louvain(250_000, others=spleen)).fired
+
+
+def test_louvain_too_large_unreadable_count_is_not_judged() -> None:
+    for c in (_louvain(None), _louvain(1_570_000, bound=False)):
+        v = _louvain_verdict(c)
+        assert not v.fired
+        assert v.evidence["n_cells"] is None and "not in the state" in v.evidence["note"]

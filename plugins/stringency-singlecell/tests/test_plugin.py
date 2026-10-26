@@ -11,8 +11,9 @@ def test_plugin_loads() -> None:
         and "differential_expression" in p.objective_questions
     )
     assert (
-        len(p.predicates()) == 22
-    )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review
+        len(p.predicates()) == 24
+    )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review;
+    # 0.8.5 sc.fine_label_uncited; 0.8.6 sc.louvain_too_large
     assert (
         "cell_types_mouse@1" in p.vocabularies and "unknown" in p.vocabularies["cell_types_mouse@1"]
     )
