@@ -11,6 +11,18 @@ plot_composition, test_differential_expression, score_pathways, neighborhood_enr
 infer_cell_communication); the niche and report ones are provisional. The open tools write plain
 types (`cell_table`, `punch_table`, `pseudobulk_set`, `proportion_table`; spec/object-types.md)
 that need no extractor.
+
+0.9.0 (2026-10-27, the open tools' second round; the Xenium method's `open-tools-v2-plan.md`
+section 10): the layer parameters `group_by`, `subset`, `denominator` and `stratify_by` (and
+`block` on `compose_cells` and `test_differential_expression`) on the five open tools'
+operations; `test_differential_expression` gains `contrast_layer`, `within`, `method` and the
+contamination filter, `plot_composition` the design's factor, `neighborhood_enrichment` a radius
+sweep (`radii_um`); two new operations, `sweep_domains` and `call_domains` (`n_domains` an integer
+or `unset`); the plain types `cell_expression`, `domain_grid`, `domain_labels` and `cell_scores`,
+and a punch x cluster (x domain) `pseudobulk_set`; the negative-control generator
+`shuffle_coordinates`; the predicate `spatial.domain_is_replicate` (a domain whose cells come
+almost all from one replicate); `spatial.neighborhood_undeclared` reads `k_neighbors` and judges
+`sweep_domains`, and `sc.decision_unreviewed` judges `call_domains`, both at their versions.
 """
 
 from __future__ import annotations
@@ -24,7 +36,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.8.7"
+VERSION = "0.9.0"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -82,6 +94,7 @@ TOOLS = {
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
         "mix_batches",  # negative-control generator for assess-batch: removes the slide structure of a batch_evidence dir
         "shuffle_column",  # negative-control generator for the open tools (0.6.0): permutes a design column across the units of a table
+        "shuffle_coordinates",  # negative-control generator for the spatial open tools (0.9.0): permutes (x, y) among the cells of each punch
     )
 }
 # the one R tool: the engine dispatches `.R` scripts through Rscript inside the module's env

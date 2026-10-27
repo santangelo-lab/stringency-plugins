@@ -13,6 +13,7 @@ from stringency_singlecell.predicates import (  # noqa: F401
     cells,
     clustering,
     decisions,
+    domains,
     downstream,
     join,
     objects,

@@ -182,7 +182,22 @@ def _scrna(
     return ctx(operation, _summary(**facts), phase=phase, ranges=ranges, act=act)
 
 
+def _domains(
+    facts: dict | None = None, ranges: dict | None = None, **params: object
+) -> GateContext:
+    """A call_domains step after it ran: its `domain_facts` analysis_summary in the state."""
+    objs = _summary(**facts) if facts is not None else {}
+    act = action("call_domains", **{"n_domains": 6, **params})
+    return ctx("call_domains", objs, phase="post", ranges=ranges, act=act)
+
+
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    # the spatial domain calls (plugin 0.9.0)
+    (
+        "spatial.domain_is_replicate",
+        lambda: _domains({"n_domains": 6, "max_single_replicate_share": 0.97}),
+        lambda: _domains({"n_domains": 6, "max_single_replicate_share": 0.41}),
+    ),
     # droplet and combinatorial kits (plugin 0.8.0, benchmark Phase 1)
     (
         "sc.qc_floor_above_data",
@@ -848,6 +863,106 @@ def test_neighbourhood_variants() -> None:
     assert _run("spatial.no_permutation_null", c) is True
 
 
+def test_neighbourhood_undeclared_reads_k_neighbors_and_radii() -> None:
+    """0.9.0: `k_neighbors` and a positive `radii_um` sweep are declared scales, and the domain
+    sweep's spatial graph is judged as the enrichment's radius is. No earlier verdict changes,
+    so the version stays 1 (the method's domain-sweep gates on @1)."""
+    spec = registry.get("spatial.neighborhood_undeclared")
+    assert spec is not None and spec.version == 1
+    assert spec.covers_param("sweep_domains", "k_neighbors")
+    assert (
+        _run("spatial.neighborhood_undeclared", _nhood(radius_um=None, radii_um="20,40,80"))
+        is False
+    )
+    assert _run("spatial.neighborhood_undeclared", _nhood(radius_um=None, radii_um="0,40")) is True
+    assert _run("spatial.neighborhood_undeclared", _nhood(radius_um=None, radii_um="")) is True
+    sweep = {"group_by": "cell_type", "n_domains_min": 4, "n_domains_max": 12, "seed": 1}
+    c = ctx("sweep_domains", {}, k_neighbors=25, **sweep)
+    assert _run("spatial.neighborhood_undeclared", c) is False
+    v = registry.get("spatial.neighborhood_undeclared").fn(c)  # type: ignore[union-attr]
+    assert v.evidence == {"scale": {"k_neighbors": 25}}
+    c = ctx("sweep_domains", {}, **sweep)
+    assert _run("spatial.neighborhood_undeclared", c) is True
+    assert _run("spatial.neighborhood_undeclared", ctx("sweep_domains", {}, k_neighbors=0)) is True
+    assert (
+        _run("spatial.neighborhood_undeclared", ctx("sweep_domains", {}, k_neighbors=True)) is True
+    )
+
+
+def test_domain_is_replicate_reason_evidence_and_band() -> None:
+    pid = "spatial.domain_is_replicate"
+    spec = registry.get(pid)
+    assert spec is not None and spec.version == 1 and str(spec.default).lower().endswith("flag")
+    assert spec.covers_param("call_domains", "n_domains") and spec.in_phase("post")
+    v = spec.fn(_domains({"n_domains": 7, "max_single_replicate_share": 0.97}))
+    assert v.fired and "punch label, not anatomy" in (v.reason or "")
+    assert v.evidence["max_single_replicate_share"] == 0.97
+    assert v.evidence["threshold"] == 0.9 and v.evidence["n_domains"] == 7
+    # at the threshold is not above it
+    assert _run(pid, _domains({"max_single_replicate_share": 0.9})) is False
+    # the policy band's upper bound is the ceiling; the number of domains falls back to the action
+    band = {"spatial.domain_replicate_share": {"standard": [0, 0.6]}}
+    c = _domains({"max_single_replicate_share": 0.7}, ranges=band, n_domains=5)
+    v = spec.fn(c)
+    assert v.fired and v.evidence["threshold"] == 0.6 and v.evidence["n_domains"] == 5
+
+
+def test_domain_is_replicate_not_judged_without_the_fact() -> None:
+    pid = "spatial.domain_is_replicate"
+    spec = registry.get(pid)
+    assert spec is not None
+    for c in (
+        _domains(None),
+        _domains({"n_domains": 6}),
+        _domains({"max_single_replicate_share": "x"}),
+    ):
+        v = spec.fn(c)
+        assert not v.fired and v.evidence["judged"] is False and v.evidence["reason"]
+
+
+def test_domain_is_replicate_reads_the_latest_summary_holding_the_fact() -> None:
+    """An earlier call's facts are overridden by the latest summary that carries the share; a
+    later summary without it (another module's facts) does not hide it."""
+    pid = "spatial.domain_is_replicate"
+
+    def summary(**facts: object):
+        return obj(
+            "analysis_summary",
+            {"n_obs": 0, "n_var": 0, "fields": {}, "counts_per_group": {}, "domain": facts},
+        )
+
+    objs = {
+        "old_facts": summary(n_domains=12, max_single_replicate_share=0.99),
+        "domain_facts": summary(n_domains=6, max_single_replicate_share=0.5),
+        "other": summary(n_cells_retained=4000),
+    }
+    c = ctx("call_domains", objs, phase="post", n_domains=6)
+    v = registry.get(pid).fn(c)  # type: ignore[union-attr]
+    assert not v.fired and v.evidence["object"] == "domain_facts"
+    objs["domain_facts"] = summary(n_domains=6, max_single_replicate_share=0.95)
+    assert _run(pid, ctx("call_domains", objs, phase="post", n_domains=6)) is True
+
+
+def test_decision_unreviewed_holds_a_domain_count_at_its_default() -> None:
+    """0.9.0: call_domains is in the scope, so n_domains taken at a pipeline default without a
+    proposal is held exactly as a clustering resolution is; an agent's proposal departing from
+    the default is param.agent_proposed's, and a fork's --set is a person's decision."""
+    spec = registry.get("sc.decision_unreviewed")
+    assert spec is not None and spec.version == 2
+    assert spec.covers_param("call_domains", "n_domains")
+    mod = manifest("call_domains", ("n_domains",), {"n_domains": 8})
+
+    def c(source: str, value: int) -> GateContext:
+        act = action("call_domains", sources={"n_domains": source}, n_domains=value)
+        return ctx("call_domains", {}, act=act, module=mod)
+
+    v = spec.fn(c("default", 8))
+    assert v.fired and "n_domains" in (v.reason or "")
+    assert _run("sc.decision_unreviewed", c("agent", 8)) is True  # proposed at the default
+    assert _run("sc.decision_unreviewed", c("agent", 6)) is False
+    assert _run("sc.decision_unreviewed", c("fork", 8)) is False
+
+
 def test_scrna_predicates_read_the_policy_and_the_latest_summary() -> None:
     """Plugin 0.8.0: the floors and ceilings come from policy ranges; a missing fact is silence;
     the evidence names the floor and the data."""
@@ -1220,3 +1335,21 @@ def test_louvain_too_large_judges_only_a_module_with_cluster_method() -> None:
     unknown = _louvain_verdict(_louvain(1_570_000, module=None))
     assert not unknown.fired and "not in the project" in unknown.evidence["note"]
     assert _louvain_verdict(_louvain(1_570_000, module=CLUSTER_UMAP)).fired
+
+
+def test_covariate_omission_accepts_the_word_batch() -> None:
+    """0.9.0: `block: batch` stands for the declared batch column, so the model has its term."""
+    assert _run("de.covariate_omission", _de(block="batch")) is False
+    assert _run("de.covariate_omission", _de(block="design")) is False
+    assert _run("de.covariate_omission", _de(block="")) is True
+    assert _run("de.covariate_omission", _de(block="slide")) is False
+
+
+def test_decision_unreviewed_takes_a_person_stated_call_value_as_decided() -> None:
+    """0.9.0: `call --set n_domains=4 --asked-by person` records source `person`; the person
+    decided, so no sign-off hold opens (the gut check of 2026-10-27 held twice on it)."""
+    mod = manifest("call_domains", ("n_domains",), {"n_domains": "unset"})
+    act = action("call_domains", sources={"n_domains": "person"}, n_domains=4)
+    assert _run("sc.decision_unreviewed", ctx("call_domains", {}, act=act, module=mod)) is False
+    act = action("call_domains", sources={"n_domains": "default"}, n_domains="unset")
+    assert _run("sc.decision_unreviewed", ctx("call_domains", {}, act=act, module=mod)) is True

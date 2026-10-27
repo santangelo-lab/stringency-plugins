@@ -25,7 +25,7 @@ def _uns(summary: dict[str, Any] | None) -> dict[str, Any]:
 @predicate(
     id="sc.decision_unreviewed",
     version=2,
-    scope=["normalize", "cluster_umap"],
+    scope=["normalize", "cluster_umap", "call_domains"],
     phase="pre",
     default=Disposition.FLAG,
     covers=[
@@ -33,6 +33,7 @@ def _uns(summary: dict[str, Any] | None) -> dict[str, Any]:
         "normalize.scale_factor",
         "cluster_umap.ndim",
         "cluster_umap.resolution",
+        "call_domains.n_domains",
     ],
     source=SOURCE,
 )
@@ -45,8 +46,14 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
     (`declared`, engine 0.2.18) and one a fork's parent admitted (`inherited`, engine 0.2.17:
     the Lyons v2 forks re-asked ndim at its default), so a step whose decision points all come
     from those opens nothing; no run before those engines carries such a source, so every earlier
-    verdict is unchanged and the version stays 1. Evidence: each decision point's default, value
-    and source, and the agent's rationale reference when it stated one."""
+    verdict is unchanged and the version stays 1. From 0.9.0 the scope adds `call_domains`, so a
+    domain count taken at its default without a proposal is held as a clustering resolution is;
+    no run before 0.9.0 has a `call_domains` step, so every earlier verdict is unchanged and the
+    version stays 2 (the Xenium and scrnaseq methods' modules gate on `@2`). A value the person
+    stated on an open-mode call (`--asked-by person`, source `person`) is their decision and opens
+    nothing; no pipeline step of this scope ran in open mode before 0.9.0. Evidence: each
+    decision point's default, value and source, and the agent's rationale reference when it
+    stated one."""
     m = ctx.project.module_for(ctx.action.module)
     if m is None or not m.decision_points:
         return Verdict(False)
@@ -75,7 +82,9 @@ def decision_unreviewed(ctx: GateContext) -> Verdict:
         points[name] = {"default": default, "value": value, "source": source}
         if source == "agent" and value != default:
             departing.append(name)
-        if source not in ("fork", "declared", "inherited"):
+        # 0.9.0: `person` is an open-mode call whose value the person stated in their own words
+        # (`call --set ... --asked-by person`), a recorded decision like a fork's --set
+        if source not in ("fork", "declared", "inherited", "person"):
             all_decided = False
     if departing or all_decided:
         return Verdict(False, None, {"decision_points": points, "departing": departing})
@@ -93,7 +102,7 @@ def _at_defaults(points: dict[str, dict[str, Any]]) -> str:
     proposed = [
         f"{n} {points[n]['value']}" for n in sorted(points) if points[n]["source"] == "agent"
     ]
-    decided = ("agent", "fork", "declared", "inherited")
+    decided = ("agent", "fork", "declared", "inherited", "person")
     silent = [n for n in sorted(points) if points[n]["source"] not in decided]
     parts = []
     if proposed:

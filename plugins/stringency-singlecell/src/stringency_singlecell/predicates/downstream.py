@@ -4,8 +4,8 @@ neighbourhood statistics of a spatial dataset. All pre-phase: each reads the act
 against `design.yml` (its units, replication unit, factors, batch and holdout) and the run's
 history, never the data, so it is decidable before the tool runs and the person settles the
 choice at the proposal. Scopes name the operations of the Xenium method's open tools
-(`test_differential_expression`, `compose_cells`, `neighborhood_enrichment`); a method whose
-tools use other operation names lists them in its policy.
+(`test_differential_expression`, `compose_cells`, `neighborhood_enrichment`, and from 0.9.0
+`sweep_domains`); a method whose tools use other operation names lists them in its policy.
 
 Version 1 of each (plugin 0.7.0, 2026-10-22). What the tools write after running
 (`de_coverage.underpowered`, `test_coverage.pseudoreplication`) stays the report's; a
@@ -90,7 +90,8 @@ def replication_unit(ctx: GateContext) -> Verdict:
 def covariate_omission(ctx: GateContext) -> Verdict:
     """The design declares a batch variable and the test's model has no term for it: the model
     is `~ factor` with `factor` the only term the action names, and no parameter (`covariates`,
-    `batch`, `block`) carries the batch. Flag: the person decides whether the batch is
+    `batch`, `block`) carries the batch or the word `batch` (0.9.0: the method's tools default
+    `block` to `batch`, the declared batch column resolved from the design at run time). Flag: the person decides whether the batch is
     confounded with the factor (then nothing can be done and the reason says so) or should be
     in the model. Evidence: the declared batch, the model terms."""
     batch = list(ctx.design.batch)
@@ -106,6 +107,10 @@ def covariate_omission(ctx: GateContext) -> Verdict:
             ]
         elif isinstance(v, list):
             terms += [str(t) for t in v]
+    # 0.9.0: the value `batch` (or `design`) in `block`, `batch` or `covariates` stands for the
+    # declared batch column(s), which the tool resolves from the design; the term is present
+    if any(t in ("batch", "design") for t in terms):
+        terms = [t for t in terms if t not in ("batch", "design")] + batch
     missing = [b for b in batch if b not in terms]
     ev = {"declared_batch": batch, "model_terms": terms}
     if missing:
@@ -225,28 +230,41 @@ def assumptions_unchecked(ctx: GateContext) -> Verdict:
 @predicate(
     id="spatial.neighborhood_undeclared",
     version=1,
-    scope=["neighborhood_enrichment"],
+    scope=["neighborhood_enrichment", "sweep_domains"],
     phase="pre",
     default=Disposition.BLOCK,
-    covers=["neighborhood_enrichment.radius_um"],
+    covers=["neighborhood_enrichment.radius_um", "sweep_domains.k_neighbors"],
     source=SOURCE,
 )
 def neighborhood_undeclared(ctx: GateContext) -> Verdict:
     """The neighbourhood's scale is not a declared parameter of the step: no `radius_um`,
-    `radius`, `k`, `n_neighs` or `n_neighbors` in the action's parameters, or one without a
-    positive value. A neighbourhood statistic with an implicit scale cannot be compared across
-    runs. Evidence: the parameters seen."""
+    `radius`, `k`, `k_neighbors`, `n_neighs` or `n_neighbors` in the action's parameters, or one
+    without a positive value, and no `radii_um` whose every value is positive. A neighbourhood
+    statistic with an implicit scale cannot be compared across runs. From 0.9.0 it reads
+    `k_neighbors` and `radii_um` (the radius sweep) and judges `sweep_domains`, whose spatial
+    graph is the domain call's scale; neither key was a parameter of any earlier step and the
+    operation is new, so every earlier verdict is unchanged and the version stays 1 (the
+    engine's precedent, `topo.predecessor_incomplete@1`). Evidence: the parameters seen."""
     p = ctx.action.parameters
-    for key in ("radius_um", "radius", "k", "n_neighs", "n_neighbors"):
+    for key in ("radius_um", "radius", "k", "k_neighbors", "n_neighs", "n_neighbors"):
         v = p.get(key)
         try:
-            if v is not None and float(v) > 0:
+            if v is not None and not isinstance(v, bool) and float(v) > 0:
                 return Verdict(False, None, {"scale": {key: v}})
         except (TypeError, ValueError):
             continue
+    radii = p.get("radii_um")
+    if isinstance(radii, str) and radii.strip():
+        try:
+            values = [float(r) for r in radii.split(",")]
+        except ValueError:
+            values = []
+        if values and all(r > 0 for r in values):
+            return Verdict(False, None, {"scale": {"radii_um": radii}})
     return Verdict(
         True,
-        "no neighbourhood scale (radius_um, radius, k, n_neighs) is a declared parameter of this step",
+        "no neighbourhood scale (radius_um, radii_um, radius, k, k_neighbors, n_neighs) is a "
+        "declared parameter of this step",
         {"parameters": sorted(p)},
     )
 

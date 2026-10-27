@@ -243,6 +243,36 @@ OPERATIONS["compose_cells"] = {
             "description": "samples below this many cells are dropped",
         },
         "seed": {**_INT, "description": "seed of the bootstrap and permutation draws"},
+        "level_colors": {
+            "type": "string",
+            "description": (
+                "colours of the factor's levels: '<level>=<colour>,...' (hex or an R colour "
+                "name) or a scheme name (okabe-ito, viridis, sequential, grey); empty is the "
+                "method's default"
+            ),
+        },
+        "group_palette": {
+            "type": "string",
+            "description": (
+                "colours of the groups: auto (family shading, or distinct colours when every "
+                "group drawn is in one family), family, categorical, or '<group>=<colour>,...'"
+            ),
+        },
+        "plot_test": {
+            "type": "string",
+            "description": "the test whose p-values the volcano-style figure draws; empty draws the first of `tests`",
+        },
+        "label_top": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "in the volcano-style figure, the groups labelled by smallest p when none passes the fdr",
+        },
+        "fdr": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "the adjusted p below which a group is called and labelled in the test figure",
+        },
     },
     "additionalProperties": False,
 }
@@ -255,6 +285,21 @@ OPERATIONS["plot_composition"] = {
             "description": "what each point shows per cell type",
         },
         "top_n": {**_INT, "description": "cell types drawn, the most abundant first"},
+        "level_colors": {
+            "type": "string",
+            "description": (
+                "colours of the factor's levels: '<level>=<colour>,...' (hex or an R colour "
+                "name) or a scheme name (okabe-ito, viridis, sequential, grey); empty is the "
+                "method's default"
+            ),
+        },
+        "group_palette": {
+            "type": "string",
+            "description": (
+                "colours of the groups: auto (family shading, or distinct colours when every "
+                "group drawn is in one family), family, categorical, or '<group>=<colour>,...'"
+            ),
+        },
     },
     "additionalProperties": False,
 }
@@ -302,6 +347,34 @@ OPERATIONS["score_pathways"] = {
         "min_genes": {
             **_INT,
             "description": "a module with fewer genes on the panel is scored but flagged",
+        },
+        "min_cells_per_sample": {
+            **_INT,
+            "description": "samples below this many cells are dropped from the test",
+        },
+        "top_n": {
+            **_INT,
+            "description": "groups drawn in the figure, those whose means spread most first",
+        },
+        "plot_module": {
+            "type": "string",
+            "description": "the module the figure draws; empty draws the first scored",
+        },
+        "level_colors": {
+            "type": "string",
+            "description": (
+                "colours of the factor's levels: '<level>=<colour>,...' (hex or an R colour "
+                "name) or a scheme name (okabe-ito, viridis, sequential, grey); empty is the "
+                "method's default"
+            ),
+        },
+        "plot_cells": {
+            "type": "boolean",
+            "description": "also draw every cell's score as one violin per replicate within each level",
+        },
+        "overlay_reference": {
+            "type": "boolean",
+            "description": "in the per-cell figure, draw the reference level's pooled distribution as a grey outline behind each level",
         },
     },
     "additionalProperties": False,
@@ -468,6 +541,205 @@ for _op in ("test_differential_expression", "compose_cells"):
             "(punch, cell), which de.replication_unit judges"
         ),
     }
+
+# 0.9.0 (2026-10-27): the open tools, second round (the Xenium method's
+# `docs/open-tools-v2-plan.md`, section 10, the contract every work package builds against).
+# The layer parameters choose which cells enter and what a row is; the domain operations call
+# spatial domains from the neighbour-label composition. Values arrive as text from `--set`, so a
+# list is a comma-separated string and a clause is one string.
+_COLUMN = "[A-Za-z_][A-Za-z0-9_.]*"
+_CLAUSE = rf"^$|^\s*{_COLUMN}\s+in\s+[^,]+(\s*,\s*[^,]+)*\s*$|^\s*{_COLUMN}\s*=\s*[^,]+$"
+_OPTIONAL_COLUMN = rf"^$|^{_COLUMN}$"
+_LAYER: dict[str, dict[str, Any]] = {
+    "group_by": {
+        "type": "string",
+        "pattern": rf"^{_COLUMN}$",
+        "description": (
+            "the cell-table column whose levels are the rows: cell_type, cluster, "
+            "cell_type_fine, domain or any label column present"
+        ),
+    },
+    "subset": {
+        "type": "string",
+        "pattern": _CLAUSE,
+        "description": (
+            "one clause selecting the cells that enter, `<column> in <v1>,<v2>` or "
+            "`<column> = <v>`; empty means every cell"
+        ),
+    },
+    "denominator": {
+        "type": "string",
+        "enum": ["all", "subset"],
+        "description": "for proportions: all the replicate's cells, or only the cells subset kept",
+    },
+    "stratify_by": {
+        "type": "string",
+        "pattern": _OPTIONAL_COLUMN,
+        "description": (
+            "a second label column; the analysis runs within each of its levels and strata "
+            "under the minimum cells are listed in the coverage table; empty for none"
+        ),
+    },
+    "block": {
+        "type": "string",
+        "pattern": _OPTIONAL_COLUMN,
+        "description": (
+            "a column (the batch, slide) entered as a model term; when it is confounded with "
+            "the factor it is not fitted and the coverage table says so; empty for none"
+        ),
+    },
+}
+_LAYER_KEYS = {
+    "compose_cells": ("group_by", "subset", "denominator", "stratify_by", "block"),
+    "plot_composition": ("group_by", "subset", "denominator", "stratify_by"),
+    "score_pathways": ("group_by", "subset", "stratify_by"),
+    "test_differential_expression": ("group_by", "subset", "stratify_by", "block"),
+    "neighborhood_enrichment": ("group_by", "subset", "stratify_by"),
+}
+for _op, _keys in _LAYER_KEYS.items():
+    OPERATIONS[_op]["properties"].update({k: dict(_LAYER[k]) for k in _keys})
+
+OPERATIONS["test_differential_expression"]["properties"].update(
+    {
+        "contrast_layer": {
+            "type": "string",
+            "pattern": _OPTIONAL_COLUMN,
+            "description": (
+                "the column whose levels are contrasted: a design factor (the animals are the "
+                "replicates) or a label column (cluster, domain: contrasted within animals, "
+                "~ 0 + level + animal); empty for the factor"
+            ),
+        },
+        "within": {
+            "type": "string",
+            "pattern": _CLAUSE,
+            "description": (
+                "one clause applied before the contrast, `<column> in <v1>,<v2>` or "
+                "`<column> = <v>` (one lineage, one time point); empty for none"
+            ),
+        },
+        "method": {
+            "type": "string",
+            "enum": ["limma_voom", "edger_ql"],
+            "description": "the pseudobulk model: limma-voom with treat, or edgeR quasi-likelihood",
+        },
+        "contamination_filter": {
+            "type": "boolean",
+            "description": (
+                "per group keep genes with at least min_count in at least min_fraction of the "
+                "group's cells; the genes dropped are listed in de_coverage"
+            ),
+        },
+        "min_count": {
+            **_INT,
+            "description": "the count a cell must reach for the contamination filter",
+        },
+        "min_fraction": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "the fraction of the group's cells that must reach min_count",
+        },
+    }
+)
+OPERATIONS["plot_composition"]["properties"].update(
+    {
+        "measure": {
+            "type": "string",
+            "enum": ["proportion", "count", "density"],
+            "description": (
+                "what each bar segment shows: the share of the replicate's cells, the count, "
+                "or cells per mm²"
+            ),
+        },
+        "top_n": {
+            **_INT,
+            "description": "groups drawn, the most abundant first; the rest fold into other",
+        },
+        "factor": _FACTOR["factor"],
+        "reference": {
+            "type": "string",
+            "description": "the factor level drawn first",
+        },
+        "replicate_unit": dict(OPERATIONS["compose_cells"]["properties"]["replicate_unit"]),
+    }
+)
+OPERATIONS["neighborhood_enrichment"]["properties"].update(
+    {
+        "radii_um": {
+            "type": "string",
+            "pattern": r"^\s*[0-9]+(\.[0-9]+)?(\s*,\s*[0-9]+(\.[0-9]+)?)*\s*$",
+            "description": (
+                "comma-separated neighbourhood radii in microns (a sweep, 20,40,80); "
+                "scale_stability says at how many the enrichment holds"
+            ),
+        },
+        "min_cells": {
+            **_INT,
+            "description": "groups below this many cells in a punch are left out",
+        },
+        "n_jobs": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "worker processes of the permutations (1: squidpy issue 1318)",
+        },
+    }
+)
+OPERATIONS["sweep_domains"] = {
+    "type": "object",
+    "properties": {
+        "group_by": {
+            **_LAYER["group_by"],
+            "description": "the label column whose neighbour composition defines a domain",
+        },
+        "k_neighbors": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "neighbours of each cell in the per-punch spatial graph",
+        },
+        "exclude": {
+            "type": "string",
+            "description": (
+                "comma-separated labels left out of the neighbour composition (the technical "
+                "ones: low_quality, mixed_doublet, unknown)"
+            ),
+        },
+        "n_domains_min": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "the fewest domains in the k-means sweep",
+        },
+        "n_domains_max": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "the most domains in the k-means sweep",
+        },
+        "seed": {**_INT, "description": "seed of the k-means starts"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["call_domains"] = {
+    "type": "object",
+    "properties": {
+        "n_domains": {
+            "anyOf": [{"type": "integer", "minimum": 2}, {"const": "unset"}],
+            "description": (
+                "the column of the sweep whose labels become the domains; unset stops the step "
+                "so the operator proposes it from domain_sweep and a person approves it"
+            ),
+        },
+        "domain_names": {
+            "type": "string",
+            "pattern": r"^$|^\s*[0-9]+\s*=\s*[^,=]+(\s*,\s*[0-9]+\s*=\s*[^,=]+)*\s*$",
+            "description": "names for the numbered domains, `1=crypt,2=villus`; empty keeps numbers",
+        },
+        "min_cells": {
+            **_INT,
+            "description": "a domain and replicate under this many cells is listed, not dropped",
+        },
+    },
+    "additionalProperties": False,
+}
 
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (

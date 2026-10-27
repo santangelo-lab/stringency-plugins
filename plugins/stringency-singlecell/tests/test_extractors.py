@@ -742,6 +742,89 @@ def test_shuffle_column_tool(tmp_path: Path) -> None:
     assert s["s1"] == s["s2"] and sorted({s["s1"], s["s3"]}) == ["24", "control"]
 
 
+def test_shuffle_coordinates_tool(tmp_path: Path) -> None:
+    """0.9.0: the spatial negative-control generator permutes the (x, y) pairs among the cells
+    of each punch: per punch the multiset of coordinate pairs is unchanged, every label column
+    is unchanged, and cells moved; a directory input is copied with its named file rewritten."""
+    import csv
+    import subprocess
+    import sys
+
+    from stringency_singlecell import TOOLS
+
+    src = tmp_path / "cells.csv"
+    rows = [
+        {
+            "cell_id": f"{u}_{i}",
+            "punch_id": u,
+            "timepoint_h": t,
+            "cell_type": "enterocyte" if i % 2 else "goblet_cell",
+            "cluster": str(i % 3),
+            "x": f"{base + i * 10.5:.1f}",
+            "y": f"{base + i * i:.1f}",
+        }
+        for u, t, base in (("ctrl-1", "control", 0.0), ("24-1", "24", 5000.0))
+        for i in range(12)
+    ]
+    with open(src, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+    out = tmp_path / "shuffled.csv"
+    job = {"inputs": {"input": str(src)}, "params": {"seed": 3}, "outputs": {"object": str(out)}}
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_coordinates"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    with open(out, newline="") as f:
+        got = list(csv.DictReader(f))
+    labels = ("cell_id", "punch_id", "timepoint_h", "cell_type", "cluster")
+    assert [{k: r[k] for k in labels} for r in got] == [{k: r[k] for k in labels} for r in rows]
+    for unit in ("ctrl-1", "24-1"):
+        before = sorted((r["x"], r["y"]) for r in rows if r["punch_id"] == unit)
+        after = sorted((r["x"], r["y"]) for r in got if r["punch_id"] == unit)
+        assert after == before, unit  # pairs stay pairs and stay in their punch
+    moved = sum((a["x"], a["y"]) != (b["x"], b["y"]) for a, b in zip(got, rows, strict=True))
+    assert moved >= 1
+    # the same seed gives the same copy
+    again = tmp_path / "again.csv"
+    job["outputs"] = {"object": str(again)}
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_coordinates"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    assert again.read_text() == out.read_text()
+    # a directory input: the named file inside is rewritten, the rest copied
+    d = tmp_path / "tables"
+    d.mkdir()
+    (d / "punches.csv").write_text("punch_id,n_cells\nctrl-1,12\n")
+    (d / "cells.csv").write_text(src.read_text())
+    out_d = tmp_path / "tables_shuffled"
+    job = {
+        "inputs": {"input": str(d)},
+        "params": {"seed": 1, "by": "punch_id", "file": "cells.csv"},
+        "outputs": {"object": str(out_d)},
+    }
+    subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_coordinates"].script)],
+        input=json.dumps(job),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
+    assert (out_d / "punches.csv").read_text() == "punch_id,n_cells\nctrl-1,12\n"
+    with open(out_d / "cells.csv", newline="") as f:
+        got_d = list(csv.DictReader(f))
+    assert sorted((r["x"], r["y"]) for r in got_d) == sorted((r["x"], r["y"]) for r in rows)
+    assert [r["cell_type"] for r in got_d] == [r["cell_type"] for r in rows]
+
+
 def test_extract_marker_panels(tmp_path: Path, design_json: Path) -> None:
     """0.8.3: the declared panels as lineage -> genes, duplicates dropped, missing columns named."""
     f = tmp_path / "panels.csv"

@@ -107,7 +107,7 @@ The extractor (stdlib) refuses a directory without `manifest.json` (contract ver
 `batch_overview.csv`; it reports the manifest's summary under `uns_flags.batch_assessment` so a
 predicate written against the Seurat object's flag reads this object the same way.
 
-## Plain types written by the open tools (0.6.0)
+## Plain types written by the open tools (0.6.0; 0.9.0)
 
 The Xenium method's open tools (engine open mode) exchange tables through types that are not
 plugin object types: no extractor runs on them, `topo.input_type_mismatch` compares the strings,
@@ -118,8 +118,35 @@ A method that writes them follows these columns; the first column is the row key
 |---|---|---|---|
 | `cell_table` | csv | `cell_id` (unique: `<punch_id>_<barcode>`) | `punch_id, animal, timepoint_h, condition, slide, cell_type, cell_type_fine, cluster, x, y, cell_area, nCount_Xenium` (the design columns as declared; the label column from `misc$stringency$labels$column`) |
 | `punch_table` | csv | `punch_id` | the design columns, `n_cells, area_mm2, density_cells_per_mm2` (convex hull of the punch's cells) |
-| `pseudobulk_set` | dir | `counts.csv`: `gene`; `samples.csv`: `sample` | `counts.csv` one column per `<punch_id>|<cell_type>` sample; `samples.csv`: `punch_id, cell_type, animal, timepoint_h, condition, slide, n_cells` |
+| `pseudobulk_set` | dir | `counts.csv`: `gene`; `samples.csv`: `sample` | `counts.csv` one column per `<punch_id>|<cell_type>` sample; `samples.csv`: `punch_id, cell_type, animal, timepoint_h, condition, slide, n_cells` (0.6.0; from 0.9.0 punch x cluster, below) |
 | `proportion_table` | csv | `cell_type` | one column per punch (the fraction of the punch's cells), `total` |
+| `cell_expression` | h5ad | obs index `cell_id` | `X` the counts, layer `data` the normalised values, `obs` the cell table, `obsm["spatial"]` x, y (0.9.0) |
+| `domain_grid` | csv | `cell_id` | `domain_k<n>` for every n the domain sweep ran (0.9.0, `sweep_domains`) |
+| `domain_labels` | csv | `cell_id` | `domain` (0.9.0, `call_domains`: the sweep's column at the chosen `n_domains`) |
+| `cell_scores` | csv (or csv.gz) | `cell_id` | one numeric column per module scored (0.9.0, `score_pathways`) |
+
+Plain types need no extractor, the four of 0.9.0 included: a tool's input of one of these types
+binds the latest artifact of that type, and `topo.input_type_mismatch` compares the strings.
+
+**`pseudobulk_set` from 0.9.0** (the open tools' second round; the Xenium method's
+`open-tools-v2-plan.md` 10.3). The sample is the punch x cluster, optionally x domain, so a
+cell-type pseudobulk is the sum over its clusters (the label is a function of the cluster):
+
+- `counts.csv`: first column `gene`, one column per sample named `<punch_id>|<cluster>`, or
+  `<punch_id>|<cluster>|<domain>` when the set is stratified by domain (`call_domains` writes
+  one);
+- `samples.csv`: first column `sample` (the column name in `counts.csv`), then `punch_id,
+  cluster, cell_type, cell_type_fine`, `domain` when stratified, the design columns (`animal,
+  timepoint_h, condition, slide`, as declared) and `n_cells`;
+- `detected.csv`: the same shape as `counts.csv` (first column `gene`, the same sample
+  columns in the same order), holding per gene and sample the fraction of the sample's cells
+  with a count above zero. The DE tool's contamination filter (`contamination_filter`,
+  `min_count`, `min_fraction`) reads it; a set without it cannot be filtered and the DE
+  tool's coverage table says so.
 
 Negative controls on these tables use the plugin tool `shuffle_column` (params `column`, `by`,
-`seed`, and `file` for a directory), which permutes one design column across units.
+`seed`, and `file` for a directory), which permutes one design column across units. The
+spatial tools' negative controls use `shuffle_coordinates` (0.9.0; params `by`, default
+`punch_id`, `seed`, default 1, `x` and `y`, the coordinate columns, default `x` and `y`, and
+`file` for a directory, default `cells.csv`), which permutes the `(x, y)` pairs among the cells
+of each unit, so no spatial structure survives while every cell keeps its labels.

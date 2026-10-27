@@ -142,6 +142,8 @@ def test_plugin_surface() -> None:
         "sc.normalization_depth",
         "sc.pc1_single_gene",
         "sc.pca_depth_confounded",
+        # the spatial domain calls (0.9.0)
+        "spatial.domain_is_replicate",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
         "proceed_uncorrected",
