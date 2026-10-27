@@ -10,7 +10,8 @@ untouched. A pair moves as a pair. Registered as the plugin tool `shuffle_coordi
 engine resolves a control's `generator.tool` through the plugin's tool registry and runs it with
 the job below.
 
-Job JSON on stdin: {"inputs": {"input": <csv/tsv file or dir>},
+Job JSON on stdin: {"inputs": {"input": <csv/tsv file, an h5ad (0.10.1: obsm["spatial"] and the
+                                        obs x, y columns), or a dir>},
                     "params": {"by": "punch_id", "seed": 1, "x": "x", "y": "y",
                                "file": "cells.csv"},   # `file` only when the input is a dir
                     "outputs": {"object": <file or dir>}}. Stdlib only.
@@ -24,6 +25,7 @@ import random
 import shutil
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def permute_coordinates(path: Path, x: str, y: str, by: str, rng: random.Random) -> int:
@@ -49,6 +51,46 @@ def permute_coordinates(path: Path, x: str, y: str, by: str, rng: random.Random)
     return len(members)
 
 
+def _obs_column(f: Any, name: str) -> list[str]:
+    """An obs column of an h5ad as strings: a categorical group (codes, categories) or an array."""
+    node = f["obs"][name]
+    if hasattr(node, "keys"):  # a categorical: codes into categories
+        cats = [c.decode() if isinstance(c, bytes) else str(c) for c in node["categories"][()]]
+        return [cats[int(i)] for i in node["codes"][()]]
+    vals = node[()]
+    return [v.decode() if isinstance(v, bytes) else str(v) for v in vals]
+
+
+def permute_h5ad(path: Path, x: str, y: str, by: str, rng: random.Random) -> int:
+    """The same permutation on an AnnData file (0.10.1): the rows of obsm["spatial"] are
+    permuted among the cells of each unit of the obs column `by`, and the obs columns `x` and
+    `y` with them when present, so the file's coordinates and its cell table agree. Needs h5py
+    (the plugin's extractor extra); the file is rewritten in place."""
+    import h5py
+
+    with h5py.File(path, "r+") as f:
+        units = _obs_column(f, by)
+        members: dict[str, list[int]] = {}
+        for i, u in enumerate(units):
+            members.setdefault(u, []).append(i)
+        spatial = f["obsm"]["spatial"][()]
+        has_xy = x in f["obs"] and y in f["obs"] and not hasattr(f["obs"][x], "keys")
+        xs = f["obs"][x][()] if has_xy else None
+        ys = f["obs"][y][()] if has_xy else None
+        for idx in members.values():
+            order = list(idx)
+            rng.shuffle(order)
+            spatial[idx] = spatial[order]
+            if has_xy:
+                xs[idx] = xs[order]
+                ys[idx] = ys[order]
+        f["obsm"]["spatial"][...] = spatial
+        if has_xy:
+            f["obs"][x][...] = xs
+            f["obs"][y][...] = ys
+    return len(members)
+
+
 def main() -> int:
     job = json.load(sys.stdin)
     src = Path(job["inputs"]["input"])
@@ -67,7 +109,10 @@ def main() -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, out)
         target = out
-    n = permute_coordinates(target, x, y, by, rng)
+    if target.suffix.lower() == ".h5ad":
+        n = permute_h5ad(target, x, y, by, rng)
+    else:
+        n = permute_coordinates(target, x, y, by, rng)
     print(f"permuted ({x}, {y}) within {n} units of {by} in {target} with seed {seed}")
     return 0
 

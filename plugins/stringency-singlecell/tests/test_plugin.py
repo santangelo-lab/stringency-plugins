@@ -53,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.0"
+    assert p.version == "0.10.1"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},

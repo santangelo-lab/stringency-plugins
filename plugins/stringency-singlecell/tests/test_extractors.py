@@ -844,3 +844,39 @@ def test_extract_marker_panels(tmp_path: Path, design_json: Path) -> None:
         out["domain"]["missing_required_columns"] == ["lineage", "gene"]
         and out["domain"]["panels"] == {}
     )
+
+
+def test_shuffle_coordinates_h5ad(tmp_path: Path) -> None:
+    """0.10.1: an h5ad's obsm["spatial"] rows are permuted within each unit, the labels kept."""
+    h5py = pytest.importorskip("h5py")
+    import numpy as np
+
+    src = tmp_path / "cells.h5ad"
+    with h5py.File(src, "w") as f:
+        obs = f.create_group("obs")
+        g = obs.create_group("punch_id")
+        g.create_dataset("codes", data=np.array([0, 0, 0, 1, 1, 1], dtype="i1"))
+        g.create_dataset("categories", data=np.array([b"p1", b"p2"]))
+        obs.create_dataset("x", data=np.arange(6, dtype="f8"))
+        obs.create_dataset("y", data=np.arange(6, dtype="f8") * 10)
+        f.create_group("obsm").create_dataset(
+            "spatial", data=np.c_[np.arange(6.0), np.arange(6.0) * 10]
+        )
+    out = tmp_path / "shuffled.h5ad"
+    job = {"inputs": {"input": str(src)}, "params": {"seed": 3}, "outputs": {"object": str(out)}}
+    res = subprocess.run(
+        [sys.executable, str(TOOLS["shuffle_coordinates"].script)],
+        input=json.dumps(job),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "2 units" in res.stdout
+    with h5py.File(out) as f:
+        sp = f["obsm"]["spatial"][()]
+        assert sorted(sp[:3, 0].tolist()) == [0.0, 1.0, 2.0] and sorted(sp[3:, 0].tolist()) == [
+            3.0,
+            4.0,
+            5.0,
+        ]
+        assert (f["obs"]["x"][()] == sp[:, 0]).all()
