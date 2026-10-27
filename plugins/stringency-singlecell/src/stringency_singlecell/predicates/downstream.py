@@ -4,8 +4,9 @@ neighbourhood statistics of a spatial dataset. All pre-phase: each reads the act
 against `design.yml` (its units, replication unit, factors, batch and holdout) and the run's
 history, never the data, so it is decidable before the tool runs and the person settles the
 choice at the proposal. Scopes name the operations of the Xenium method's open tools
-(`test_differential_expression`, `compose_cells`, `neighborhood_enrichment`, and from 0.9.0
-`sweep_domains`); a method whose tools use other operation names lists them in its policy.
+(`test_differential_expression`, `compose_cells`, `neighborhood_enrichment`, from 0.9.0
+`sweep_domains`, and from 0.10.0 `test_proximity_effect`, `measure_distance` and
+`test_spatial_autocorrelation`); a method whose tools use other operation names lists them in its policy.
 
 Version 1 of each (plugin 0.7.0, 2026-10-22). What the tools write after running
 (`de_coverage.underpowered`, `test_coverage.pseudoreplication`) stays the report's; a
@@ -227,44 +228,96 @@ def assumptions_unchecked(ctx: GateContext) -> Verdict:
     return Verdict(False)
 
 
+NHOOD_OPS = [
+    "neighborhood_enrichment",
+    "sweep_domains",
+    "test_proximity_effect",
+    "measure_distance",
+    "test_spatial_autocorrelation",
+]
+SCALE_KEYS = ("radius_um", "radius", "k", "k_neighbors", "n_neighs", "n_neighbors")
+# 0.10.0: a distance tool's scale is its bins or its cut-off distance, read only for it
+DISTANCE_SCALE_KEYS = {"measure_distance": ("max_distance_um",)}
+COORDINATE_PERMUTATION_OPS = {"test_proximity_effect"}
+NULL_NAMES = {
+    "neighborhood_enrichment": "the enrichment null",
+    "test_proximity_effect": "the near/far coordinate-permutation null",
+    "test_spatial_autocorrelation": "Moran's I null",
+}
+
+
+def _positive(v: object) -> bool:
+    try:
+        return v is not None and not isinstance(v, bool) and float(v) > 0  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+
+
+def _positive_list(v: object) -> bool:
+    """A comma-separated string of numbers, every one positive (`radii_um`, `bins_um`)."""
+    if not isinstance(v, str) or not v.strip():
+        return False
+    try:
+        values = [float(r) for r in v.split(",")]
+    except ValueError:
+        return False
+    return bool(values) and all(r > 0 for r in values)
+
+
 @predicate(
     id="spatial.neighborhood_undeclared",
     version=1,
-    scope=["neighborhood_enrichment", "sweep_domains"],
+    scope=NHOOD_OPS,
     phase="pre",
     default=Disposition.BLOCK,
-    covers=["neighborhood_enrichment.radius_um", "sweep_domains.k_neighbors"],
+    covers=[
+        "neighborhood_enrichment.radius_um",
+        "sweep_domains.k_neighbors",
+        "test_proximity_effect.cutoff_um",
+        "measure_distance.bins_um",
+        "measure_distance.max_distance_um",
+        "test_spatial_autocorrelation.k_neighbors",
+        "test_spatial_autocorrelation.radius_um",
+    ],
     source=SOURCE,
 )
 def neighborhood_undeclared(ctx: GateContext) -> Verdict:
     """The neighbourhood's scale is not a declared parameter of the step: no `radius_um`,
     `radius`, `k`, `k_neighbors`, `n_neighs` or `n_neighbors` in the action's parameters, or one
-    without a positive value, and no `radii_um` whose every value is positive. A neighbourhood
-    statistic with an implicit scale cannot be compared across runs. From 0.9.0 it reads
-    `k_neighbors` and `radii_um` (the radius sweep) and judges `sweep_domains`, whose spatial
-    graph is the domain call's scale; neither key was a parameter of any earlier step and the
-    operation is new, so every earlier verdict is unchanged and the version stays 1 (the
-    engine's precedent, `topo.predecessor_incomplete@1`). Evidence: the parameters seen."""
+    without a positive value, no `radii_um` whose every value is positive, and no `cutoff_um`
+    that is a positive number or the word `delaunay` (each punch's median Delaunay edge, written
+    per punch in the tool's coverage table). For `measure_distance` a positive `bins_um` (every
+    edge after the first positive, the first may be 0) or `max_distance_um` is the scale. A
+    neighbourhood statistic with an implicit scale cannot be compared across runs. From 0.9.0 it
+    reads `k_neighbors` and `radii_um` (the radius sweep) and judges `sweep_domains`; from 0.10.0
+    it reads `cutoff_um`, `bins_um` and `max_distance_um` and judges `test_proximity_effect`,
+    `measure_distance` and `test_spatial_autocorrelation`. None of those keys was a parameter of
+    any earlier step and the operations are new, so every earlier verdict is unchanged and the
+    version stays 1 (the engine's precedent, `topo.predecessor_incomplete@1`). Evidence: the
+    scale read, or the parameters seen."""
     p = ctx.action.parameters
-    for key in ("radius_um", "radius", "k", "k_neighbors", "n_neighs", "n_neighbors"):
-        v = p.get(key)
-        try:
-            if v is not None and not isinstance(v, bool) and float(v) > 0:
-                return Verdict(False, None, {"scale": {key: v}})
-        except (TypeError, ValueError):
-            continue
-    radii = p.get("radii_um")
-    if isinstance(radii, str) and radii.strip():
-        try:
-            values = [float(r) for r in radii.split(",")]
-        except ValueError:
-            values = []
-        if values and all(r > 0 for r in values):
-            return Verdict(False, None, {"scale": {"radii_um": radii}})
+    op = ctx.action.operation
+    for key in SCALE_KEYS + DISTANCE_SCALE_KEYS.get(op, ()):
+        if _positive(p.get(key)):
+            return Verdict(False, None, {"scale": {key: p.get(key)}})
+    if _positive_list(p.get("radii_um")):
+        return Verdict(False, None, {"scale": {"radii_um": p.get("radii_um")}})
+    cutoff = p.get("cutoff_um")
+    if (isinstance(cutoff, str) and cutoff.strip().lower() == "delaunay") or _positive(cutoff):
+        return Verdict(False, None, {"scale": {"cutoff_um": cutoff}})
+    if op == "measure_distance":
+        bins = p.get("bins_um")
+        edges = bins.split(",") if isinstance(bins, str) else []
+        if len(edges) > 1 and _positive_list(",".join(edges[1:])):
+            try:
+                if float(edges[0]) >= 0:
+                    return Verdict(False, None, {"scale": {"bins_um": bins}})
+            except ValueError:
+                pass
     return Verdict(
         True,
-        "no neighbourhood scale (radius_um, radii_um, radius, k, k_neighbors, n_neighs) is a "
-        "declared parameter of this step",
+        "no neighbourhood scale (radius_um, radii_um, radius, k, k_neighbors, n_neighs, "
+        "cutoff_um) is a declared parameter of this step",
         {"parameters": sorted(p)},
     )
 
@@ -272,28 +325,44 @@ def neighborhood_undeclared(ctx: GateContext) -> Verdict:
 @predicate(
     id="spatial.no_permutation_null",
     version=1,
-    scope=["neighborhood_enrichment"],
+    scope=["neighborhood_enrichment", "test_proximity_effect", "test_spatial_autocorrelation"],
     phase="pre",
     default=Disposition.BLOCK,
-    covers=["neighborhood_enrichment.n_perms"],
+    covers=[
+        "neighborhood_enrichment.n_perms",
+        "test_proximity_effect.n_perms",
+        "test_spatial_autocorrelation.n_perms",
+    ],
     source=SOURCE,
 )
 def no_permutation_null(ctx: GateContext) -> Verdict:
-    """A neighbourhood enrichment without a permutation null, or with too few permutations to
-    stand on: `n_perms` (or `n_permutations`) absent, zero, or below the floor, policy
-    `ranges.spatial.n_perms[<band>][0]`, else 100. Evidence: the count and the floor."""
+    """A spatial statistic without a permutation null, or with too few permutations to stand
+    on: `n_perms` (or `n_permutations`) absent, zero, or below the floor. The floor is policy
+    `ranges.spatial.n_perms[<band>][0]`, else 100, for a label permutation (the enrichment,
+    Moran's I); from 0.10.0 a coordinate permutation (`test_proximity_effect`: the whole
+    near/far matching is redone per permutation, and Sun24's published design is 20) reads
+    `ranges.spatial.n_perms_coordinate[<band>][0]`, else 20. The new scopes and the new key
+    change no earlier verdict, so the version stays 1. Evidence: the count, the floor, and the
+    policy key the floor came from."""
     p = ctx.action.parameters
-    floor_band = band(ctx, "spatial.n_perms")
-    floor = int(floor_band[0]) if floor_band else 100
+    key, default = (
+        ("spatial.n_perms_coordinate", 20)
+        if ctx.action.operation in COORDINATE_PERMUTATION_OPS
+        else ("spatial.n_perms", 100)
+    )
+    floor_band = band(ctx, key)
+    floor = int(floor_band[0]) if floor_band else default
     n = p.get("n_perms", p.get("n_permutations"))
     try:
         count = int(n) if n is not None else 0
     except (TypeError, ValueError):
         count = 0
+    ev = {"n_perms": n, "floor": floor, "floor_key": key}
     if count < floor:
         return Verdict(
             True,
-            f"{count} permutation(s) behind the enrichment null; the floor is {floor}",
-            {"n_perms": n, "floor": floor},
+            f"{count} permutation(s) behind "
+            f"{NULL_NAMES.get(ctx.action.operation, 'the null')}; the floor is {floor}",
+            ev,
         )
-    return Verdict(False, None, {"n_perms": n, "floor": floor})
+    return Verdict(False, None, ev)

@@ -1,0 +1,8 @@
+# fine_label_choice@1 (0.10.0): the labels of the choose-fine-label judgment (the Xenium method's
+# PLAN 3.21). The items are the clusters whose fine-label candidates (the reviewers' free texts)
+# disagree; a reviewer chooses the candidate whose every gene and programme claim the cluster's
+# evidence supports, the narrower of two, or none when each carries an unsupported claim. A
+# reviewer never writes a text; a person's own words enter only through an override.
+name: fine_label_choice
+version: 1
+labels: [candidate_a, candidate_b, candidate_c, none]

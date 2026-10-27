@@ -1,6 +1,7 @@
 """Predicates on the cluster annotation judgment (operation annotate_clusters; the owner,
 2026-10-23: the fine label is the reviewers' free text, and a gene it names must be one the
-reviewer cited for that cluster)."""
+reviewer cited for that cluster) and on any judgment whose vocabulary is scoped by organ (0.10.0;
+the owner, 2026-10-27: "only a kidney has nephrons")."""
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ from typing import Any
 from stringency.predicates import Disposition, GateContext, Verdict, predicate
 from stringency.predicates.context import EvidenceTable
 
+from stringency_singlecell import VOCABULARY_ORGANS
 from stringency_singlecell.predicates._common import SOURCE
 
 # a gene-like token: starts with a letter or digit, may carry '-' or '.' inside (H2-Ab1)
@@ -167,3 +169,128 @@ def fine_label_uncited(ctx: GateContext) -> Verdict:
             {"uncited": uncited},
         )
     return Verdict(False, None, {"fine_labels_with_genes": checked})
+
+
+# The method's ORGAN_ALIASES (stringency-xenium-method modules/_pylib/annotation_evidence.py):
+# the spellings a manifest or parameter uses for the vocabularies' organ names.
+ORGAN_ALIASES = {
+    "gut": "small_intestine",
+    "sintest": "small_intestine",
+    "sintestine": "small_intestine",
+    "small intestine": "small_intestine",
+    "lgintest": "large_intestine",
+    "colon": "large_intestine",
+}
+UNSET_ORGAN = {"", "unset", "none", "null", "unknown"}
+
+
+def canon_organ(v: object) -> str:
+    """An organ in the vocabularies' spelling: lower case, underscores, the method's aliases."""
+    o = str(v if v is not None else "").strip().lower()
+    o = ORGAN_ALIASES.get(o, o).replace(" ", "_")
+    return ORGAN_ALIASES.get(o, o)
+
+
+def _set_organ(v: object) -> str | None:
+    return str(v) if isinstance(v, str) and v.strip().lower() not in UNSET_ORGAN else None
+
+
+def project_organ(ctx: GateContext) -> tuple[str | None, str | None]:
+    """(organ as written, where it was read) for the project, or (None, None). Read in order:
+    the objective's `params` (`01_merge.organ` first, then any other step's `organ`, by step
+    name), then the run's history (the latest admitted step whose parameters carry `organ`),
+    then the design's `organ` if the file declares one. `unset` and empty are unknown."""
+    params = ctx.objective.params or {}
+    steps = ["01_merge"] + sorted(k for k in params if k != "01_merge")
+    for step in steps:
+        organ = _set_organ((params.get(step) or {}).get("organ"))
+        if organ is not None:
+            return organ, f"objective.params.{step}.organ"
+    for rec in reversed(ctx.history):
+        organ = _set_organ(rec.params.get("organ"))
+        if organ is not None:
+            return organ, f"history.{rec.step}.organ"
+    organ = _set_organ((ctx.design.model_extra or {}).get("organ"))
+    if organ is not None:
+        return organ, "design.organ"
+    return None, None
+
+
+@predicate(
+    id="sc.label_outside_organ",
+    version=1,
+    scope=["annotate_clusters", "label_domains"],
+    phase="post",
+    default=Disposition.FLAG,
+    covers=[],
+    source=SOURCE,
+)
+def label_outside_organ(ctx: GateContext) -> Verdict:
+    """A valid replicate labels an item with a vocabulary label not found in the project's organ
+    (a `periportal` domain in the gut, a `hepatocyte` cluster in the lung): the label's `organs`
+    in the vocabulary's map (`VOCABULARY_ORGANS`, the YAML's `organs:`) do not include the organ
+    and are not `any`. The vocabulary is the step's module manifest's `vocabulary`; the organ is
+    read as `project_organ` says, with the method's aliases (`gut` is `small_intestine`).
+    Abstained items, labels the map leaves out, and labels outside the vocabulary (the engine's
+    `judg.vocabulary_resolves`) are skipped. Not judged (`judged: false`, the reason) without an
+    output, a module vocabulary with an organs map, or a known organ. Evidence: per item and
+    replicate the item, label, label_organs, project_organ and replicate."""
+    if ctx.output is None:
+        return Verdict(False, None, {"judged": False, "reason": "no output bundle"})
+    m = ctx.project.module_for(ctx.action.module)
+    vocab = m.vocabulary if m is not None else None
+    organs = VOCABULARY_ORGANS.get(str(vocab)) if vocab else None
+    if not organs:
+        return Verdict(
+            False,
+            None,
+            {
+                "judged": False,
+                "reason": f"vocabulary {vocab} has no organs map",
+                "vocabulary": vocab,
+            },
+        )
+    written, source = project_organ(ctx)
+    if written is None:
+        return Verdict(
+            False,
+            None,
+            {"judged": False, "reason": "the project's organ is unknown", "vocabulary": vocab},
+        )
+    organ = canon_organ(written)
+    outside: list[dict[str, Any]] = []
+    checked = 0
+    for rep_no, it in _replicate_items(ctx):
+        label = it.get("label")
+        if it.get("abstain") or not isinstance(label, str) or label not in organs:
+            continue
+        checked += 1
+        where = organs[label]
+        if "any" in where or organ in where:
+            continue
+        outside.append(
+            {
+                "item": str(it.get("item_id")),
+                "label": label,
+                "label_organs": list(where),
+                "project_organ": organ,
+                "replicate": rep_no,
+            }
+        )
+    ev: dict[str, Any] = {
+        "vocabulary": vocab,
+        "project_organ": organ,
+        "organ_written": written,
+        "organ_source": source,
+        "labels_checked": checked,
+    }
+    if outside:
+        first = outside[0]
+        more = f" and {len(outside) - 1} more" if len(outside) > 1 else ""
+        return Verdict(
+            True,
+            f"item {first['item']} is labelled {first['label']}, found in "
+            f"{', '.join(first['label_organs'])}, not in {organ}{more}",
+            {**ev, "outside": outside},
+        )
+    return Verdict(False, None, ev)

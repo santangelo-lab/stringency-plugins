@@ -23,6 +23,10 @@ and a punch x cluster (x domain) `pseudobulk_set`; the negative-control generato
 `shuffle_coordinates`; the predicate `spatial.domain_is_replicate` (a domain whose cells come
 almost all from one replicate); `spatial.neighborhood_undeclared` reads `k_neighbors` and judges
 `sweep_domains`, and `sc.decision_unreviewed` judges `call_domains`, both at their versions.
+
+0.10.0 (2026-10-27, later): vocabularies scoped by organ, an `organs:` map in the YAML loaded as
+`VOCABULARY_ORGANS` beside the flat label tuples the engine reads, and `sc.label_outside_organ`;
+the proximity, distance and autocorrelation tools' scale and permutation gates (README).
 """
 
 from __future__ import annotations
@@ -36,22 +40,62 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
 
-def _load_vocabularies() -> dict[str, tuple[str, ...]]:
-    out: dict[str, tuple[str, ...]] = {}
+# The organ names a vocabulary's `organs:` map may use; `any` is every organ (0.10.0).
+ORGANS = (
+    "liver",
+    "lung",
+    "small_intestine",
+    "large_intestine",
+    "spleen",
+    "kidney",
+    "heart",
+    "skin",
+    "brain",
+)
+
+
+def _vocabulary_files() -> list[tuple[str, dict]]:
+    out: list[tuple[str, dict]] = []
     for f in sorted((_HERE / "vocabularies").glob("*.yml")):
         data = yaml.safe_load(f.read_text()) or {}
-        name, version, labels = (
-            data.get("name", f.stem),
-            data.get("version", "0"),
-            data.get("labels", []),
-        )
-        out[f"{name}@{version}"] = tuple(str(x) for x in labels)
+        out.append((f"{data.get('name', f.stem)}@{data.get('version', '0')}", data))
     return out
+
+
+def _load_vocabularies() -> dict[str, tuple[str, ...]]:
+    return {ref: tuple(str(x) for x in data.get("labels", [])) for ref, data in _vocabulary_files()}
+
+
+def _load_vocabulary_organs() -> dict[str, dict[str, tuple[str, ...]]]:
+    """`name@version -> label -> organs` for every vocabulary carrying an `organs:` map (0.10.0;
+    the owner 2026-10-27: a judgment vocabulary is matched by species and by tissue). The engine's
+    `Plugin.vocabularies` stays the flat label tuple; the organ scope is the plugin's, read by
+    `sc.label_outside_organ`. A label must be one of the vocabulary's, an organ one of `ORGANS` or
+    `any`; a label the map leaves out is not judged."""
+    out: dict[str, dict[str, tuple[str, ...]]] = {}
+    for ref, data in _vocabulary_files():
+        organs = data.get("organs")
+        if not organs:
+            continue
+        labels = {str(x) for x in data.get("labels", [])}
+        scoped: dict[str, tuple[str, ...]] = {}
+        for label, where in dict(organs).items():
+            where = [where] if isinstance(where, str) else list(where or ["any"])
+            names = tuple(str(o).strip().lower() for o in where)
+            bad = [o for o in names if o not in ORGANS and o != "any"]
+            if str(label) not in labels or bad:
+                raise ValueError(f"vocabulary {ref}: organs entry {label}: {where} is not valid")
+            scoped[str(label)] = names
+        out[ref] = scoped
+    return out
+
+
+VOCABULARY_ORGANS: dict[str, dict[str, tuple[str, ...]]] = _load_vocabulary_organs()
 
 
 def _ot(name: str, extractor: str) -> ObjectType:

@@ -1,0 +1,68 @@
+# tissue_structures_mouse@1 (0.10.0): the closed vocabulary of the label-domains judgment (the
+# Xenium method's domain layer, the owner 2026-10-27): the known structure a tissue domain stands
+# for, chosen from its cell-type composition and the organ guide. `mixed` is a domain spanning
+# several structures; `unknown` one no structure fits; the free-text name beside the label (as
+# the cell types' fine label) says which part, which zone or what is unusual about it.
+name: tissue_structures_mouse
+version: 1
+labels:
+  # small and large intestine
+  - crypt
+  - villus
+  - lamina_propria
+  - submucosa
+  - muscularis
+  - serosa
+  - lymphoid_follicle
+  - mesenteric_fat
+  # liver
+  - periportal
+  - pericentral
+  - portal_tract
+  - central_vein
+  - liver_capsule
+  # lung
+  - alveolar
+  - airway
+  - vascular
+  - pleura
+  - lymphoid_aggregate
+  # spleen
+  - red_pulp
+  - white_pulp
+  - marginal_zone
+  - capsule_trabeculae
+  # any organ
+  - inflammatory_focus
+  - mixed
+  - unknown
+# The organs each structure is found in (plugin 0.10.0; the owner 2026-10-27, "only a kidney has
+# nephrons"): read by the plugin's `sc.label_outside_organ`, not by the engine. `[any]` is any
+# organ. Organ names: liver, lung, small_intestine, large_intestine, spleen, kidney, heart, skin,
+# brain.
+organs:
+  crypt: [small_intestine, large_intestine]
+  villus: [small_intestine, large_intestine]
+  lamina_propria: [small_intestine, large_intestine]
+  submucosa: [small_intestine, large_intestine]
+  muscularis: [small_intestine, large_intestine]
+  serosa: [small_intestine, large_intestine]
+  lymphoid_follicle: [small_intestine, large_intestine]
+  mesenteric_fat: [small_intestine, large_intestine]
+  periportal: [liver]
+  pericentral: [liver]
+  portal_tract: [liver]
+  central_vein: [liver]
+  liver_capsule: [liver]
+  alveolar: [lung]
+  airway: [lung]
+  vascular: [lung, liver, small_intestine, large_intestine, spleen]
+  pleura: [lung]
+  lymphoid_aggregate: [lung, small_intestine, large_intestine, liver]
+  red_pulp: [spleen]
+  white_pulp: [spleen]
+  marginal_zone: [spleen]
+  capsule_trabeculae: [spleen]
+  inflammatory_focus: [any]
+  mixed: [any]
+  unknown: [any]

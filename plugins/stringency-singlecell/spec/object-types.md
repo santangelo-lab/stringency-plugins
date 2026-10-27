@@ -123,6 +123,8 @@ A method that writes them follows these columns; the first column is the row key
 | `cell_expression` | h5ad | obs index `cell_id` | `X` the counts, layer `data` the normalised values, `obs` the cell table, `obsm["spatial"]` x, y (0.9.0) |
 | `domain_grid` | csv | `cell_id` | `domain_k<n>` for every n the domain sweep ran (0.9.0, `sweep_domains`) |
 | `domain_labels` | csv | `cell_id` | `domain` (0.9.0, `call_domains`: the sweep's column at the chosen `n_domains`) |
+| `distance_table` | csv | `cell_id` | `punch_id, distance_um, target` (0.10.0: the per-cell distance to the nearest target cell within its punch, signed for a domain target) |
+| `sample_features` | csv | the replicate (`animal` or `punch_id`) | the design columns first, then one column per feature with a prefix per source tool (0.10.0) |
 | `cell_scores` | csv (or csv.gz) | `cell_id` | one numeric column per module scored (0.9.0, `score_pathways`) |
 
 Plain types need no extractor, the four of 0.9.0 included: a tool's input of one of these types

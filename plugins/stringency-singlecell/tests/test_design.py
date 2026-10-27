@@ -144,6 +144,8 @@ def test_plugin_surface() -> None:
         "sc.pca_depth_confounded",
         # the spatial domain calls (0.9.0)
         "spatial.domain_is_replicate",
+        # vocabularies scoped by organ (0.10.0)
+        "sc.label_outside_organ",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
         "proceed_uncorrected",

@@ -11,9 +11,10 @@ def test_plugin_loads() -> None:
         and "differential_expression" in p.objective_questions
     )
     assert (
-        len(p.predicates()) == 25
+        len(p.predicates()) == 26
     )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review;
-    # 0.8.5 sc.fine_label_uncited; 0.8.6 sc.louvain_too_large; 0.9.0 spatial.domain_is_replicate
+    # 0.8.5 sc.fine_label_uncited; 0.8.6 sc.louvain_too_large; 0.9.0 spatial.domain_is_replicate;
+    # 0.10.0 sc.label_outside_organ
     assert (
         "cell_types_mouse@1" in p.vocabularies and "unknown" in p.vocabularies["cell_types_mouse@1"]
     )
@@ -52,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.9.0"
+    assert p.version == "0.10.0"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -164,3 +165,48 @@ def test_open_tools_second_round_schemas_validate() -> None:
     assert not ok("call_domains", {"n_domains": "auto"})
     assert not ok("call_domains", {"domain_names": "crypt,villus"})
     assert not ok("sweep_domains", {"n_domains_min": 1})
+
+
+def test_milestones_b_to_d_and_fine_label_operations() -> None:
+    """0.10.0: the operations of the Xenium method's milestones B to D (plan section 10.5) and
+    the fine-label steps (PLAN 3.17, 3.21), with their vocabulary."""
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    for op in (
+        "measure_distance",
+        "test_proximity_effect",
+        "test_spatial_autocorrelation",
+        "summarise_sample_features",
+        "reconcile_fine_labels",
+        "choose_fine_label",
+        "label_domains",
+        "apply_domain_labels",
+    ):
+        assert op in p.operations, op
+    assert "target" in p.operations["measure_distance"].params_schema["properties"]
+    assert "effector" in p.operations["test_proximity_effect"].params_schema["properties"]
+    assert p.vocabularies["fine_label_choice@1"] == (
+        "candidate_a",
+        "candidate_b",
+        "candidate_c",
+        "none",
+    )
+
+
+def test_vocabulary_organs() -> None:
+    """0.10.0: a vocabulary may scope its labels by organ (`organs:`); the engine still sees the
+    flat label tuple and the plugin keeps the map in `VOCABULARY_ORGANS`."""
+    from stringency_singlecell import ORGANS, PLUGIN, VOCABULARY_ORGANS
+
+    assert set(VOCABULARY_ORGANS) == {"tissue_structures_mouse@1", "cell_types_mouse@2"}
+    for ref, organs in VOCABULARY_ORGANS.items():
+        labels = PLUGIN.vocabularies[ref]
+        assert set(organs) == set(labels), ref  # every label scoped
+        for where in organs.values():
+            assert where and all(o in ORGANS or o == "any" for o in where)
+    ts = VOCABULARY_ORGANS["tissue_structures_mouse@1"]
+    assert ts["crypt"] == ("small_intestine", "large_intestine")
+    assert ts["periportal"] == ("liver",) and ts["mixed"] == ("any",)
+    assert set(ts["vascular"]) == {"lung", "liver", "small_intestine", "large_intestine", "spleen"}
+    ct = VOCABULARY_ORGANS["cell_types_mouse@2"]
+    assert ct["hepatocyte"] == ("liver",) and ct["macrophage"] == ("any",)
+    assert ct["mesothelial_cell"] == ("liver", "spleen", "lung", "small_intestine")

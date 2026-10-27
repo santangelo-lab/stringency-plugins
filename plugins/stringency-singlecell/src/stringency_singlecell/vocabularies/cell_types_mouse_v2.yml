@@ -19,7 +19,8 @@
 #   schwann_cell                nerve glia outside the gut (enteric_glia is the gut's)
 #
 # Drafted by the agent (2026-10-08, after the lung and gut deliveries) at the owner's request;
-# Cell Ontology ids checked against OLS that day. The engine reads only `labels`.
+# Cell Ontology ids checked against OLS that day. The engine reads only `labels`; the plugin also
+# reads `organs` (below).
 #
 # Reviewer labels that are not cell types:
 #   mixed_doublet  a cluster whose markers are two lineages' at once (segmentation spill-over in
@@ -135,3 +136,60 @@ terms:
   mixed_doublet:          {cl_id: null, name: not a cell type (two lineages' markers at once)}
   low_quality:            {cl_id: null, name: not a cell type (held together by low counts)}
   unknown:                {cl_id: null, name: no label in this list is supported}
+# The organs each label is expected in (plugin 0.10.0; the owner 2026-10-27): the `organs` column
+# of the Xenium method's annotate-clusters/cell_types_mouse.csv, `all` written `[any]`. Read by
+# the plugin's `sc.label_outside_organ`, not by the engine. The table names the gut's cell types
+# for small_intestine only, so a large_intestine project flags them until the table adds it.
+organs:
+  hepatocyte:                    [liver]
+  cholangiocyte:                 [liver]
+  hepatic_stellate_cell:         [liver]
+  kupffer_cell:                  [liver]
+  enterocyte:                    [small_intestine]
+  goblet_cell:                   [small_intestine]
+  paneth_cell:                   [small_intestine]
+  enteroendocrine_cell:          [small_intestine]
+  tuft_cell:                     [small_intestine]
+  intestinal_stem_cell:          [small_intestine]
+  transit_amplifying_cell:       [small_intestine]
+  interstitial_cell_of_cajal:    [small_intestine]
+  alveolar_type1:                [lung]
+  alveolar_type2:                [lung]
+  club_cell:                     [lung]
+  ciliated_cell:                 [lung]
+  basal_cell:                    [lung]
+  pulmonary_neuroendocrine_cell: [lung]
+  mesothelial_cell:              [liver, spleen, lung, small_intestine]
+  endothelial:                   [any]
+  lymphatic_endothelial:         [any]
+  fibroblast:                    [any]
+  smooth_muscle:                 [any]
+  pericyte:                      [any]
+  enteric_glia:                  [small_intestine]
+  enteric_neuron:                [small_intestine]
+  schwann_cell:                  [liver, spleen, lung]
+  cardiomyocyte:                 [lung]
+  adipocyte:                     [any]
+  stromal_reticular_cell:        [spleen, small_intestine]
+  alveolar_macrophage:           [lung]
+  red_pulp_macrophage:           [spleen]
+  macrophage:                    [any]
+  monocyte:                      [any]
+  neutrophil:                    [any]
+  eosinophil:                    [any]
+  basophil:                      [any]
+  dendritic_cell:                [any]
+  plasmacytoid_dc:               [any]
+  mast_cell:                     [any]
+  t_cell:                        [any]
+  nk_cell:                       [any]
+  ilc:                           [any]
+  b_cell:                        [any]
+  germinal_center_b_cell:        [spleen, small_intestine]
+  plasma_cell:                   [any]
+  erythroid:                     [spleen, liver]
+  megakaryocyte:                 [spleen, liver]
+  hematopoietic_progenitor:      [spleen, liver]
+  mixed_doublet:                 [any]
+  low_quality:                   [any]
+  unknown:                       [any]

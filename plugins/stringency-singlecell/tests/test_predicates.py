@@ -191,7 +191,44 @@ def _domains(
     return ctx("call_domains", objs, phase="post", ranges=ranges, act=act)
 
 
+def _organ(
+    *labels: str | None,
+    organ: str | None = "gut",
+    operation: str = "label_domains",
+    vocabulary: str | None = "tissue_structures_mouse@1",
+    history: tuple = (),
+    design_organ: str | None = None,
+    valid: tuple[bool, ...] | None = None,
+) -> GateContext:
+    """A label judgment after it ran (0.10.0, `sc.label_outside_organ`): one replicate per label,
+    item `1`, the module's `vocabulary`, the organ declared as `01_merge.organ` in the objective's
+    params (None: not declared) and optionally in the design."""
+    from stringency.config import Design, Objective
+
+    from tests.helpers import DESIGN, OBJECTIVE
+
+    mod = manifest(operation).model_copy(update={"vocabulary": vocabulary})
+    out = OutputBundle(
+        outputs={},
+        replicates=tuple(
+            {"items": [{"item_id": "1", "label": lab, "abstain": lab is None}]} for lab in labels
+        ),
+        replicate_valid=valid or tuple(True for _ in labels),
+        items=("1",),
+    )
+    c = ctx(operation, {}, phase="post", output=out, module=mod, history=history)
+    params = {"01_merge": {"organ": organ}} if organ is not None else {}
+    design = {**DESIGN, "organ": design_organ} if design_organ is not None else DESIGN
+    return replace(
+        c,
+        objective=Objective.model_validate({**OBJECTIVE, "params": params}),
+        design=Design.model_validate(design),
+    )
+
+
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
+    # vocabularies scoped by organ (plugin 0.10.0): a liver structure in a gut project
+    ("sc.label_outside_organ", lambda: _organ("crypt", "periportal"), lambda: _organ("crypt")),
     # the spatial domain calls (plugin 0.9.0)
     (
         "spatial.domain_is_replicate",
@@ -1353,3 +1390,157 @@ def test_decision_unreviewed_takes_a_person_stated_call_value_as_decided() -> No
     assert _run("sc.decision_unreviewed", ctx("call_domains", {}, act=act, module=mod)) is False
     act = action("call_domains", sources={"n_domains": "default"}, n_domains="unset")
     assert _run("sc.decision_unreviewed", ctx("call_domains", {}, act=act, module=mod)) is True
+
+
+# --- label_outside_organ (0.10.0): vocabularies scoped by organ ---------------------------------
+
+
+def _outside(c: GateContext):
+    return registry.get("sc.label_outside_organ").fn(c)  # type: ignore[union-attr]
+
+
+def test_label_outside_organ_fires_naming_item_label_and_organ() -> None:
+    spec = registry.get("sc.label_outside_organ")
+    assert spec is not None and spec.version == 1 and str(spec.default).lower().endswith("flag")
+    assert spec.in_scope("annotate_clusters") and spec.in_scope("label_domains")
+    v = _outside(_organ("crypt", "periportal"))
+    assert v.fired
+    assert "1" in v.reason and "periportal" in v.reason and "small_intestine" in v.reason
+    assert v.evidence["outside"] == [
+        {
+            "item": "1",
+            "label": "periportal",
+            "label_organs": ["liver"],
+            "project_organ": "small_intestine",
+            "replicate": 2,
+        }
+    ]
+    assert v.evidence["organ_source"] == "objective.params.01_merge.organ"
+    assert v.evidence["organ_written"] == "gut"
+
+
+def test_label_outside_organ_passes_any_shared_and_aliased() -> None:
+    for label in ("crypt", "mixed", "unknown", "inflammatory_focus", "vascular"):
+        assert not _outside(_organ(label)).fired, label
+    for organ in ("liver", "lung", "spleen", "kidney"):
+        assert not _outside(_organ("mixed", organ=organ)).fired, organ
+    assert _outside(_organ("crypt", organ="liver")).fired
+    assert not _outside(_organ("crypt", organ="colon")).fired  # colon is large_intestine
+    assert not _outside(_organ("lymphoid_aggregate", organ="liver")).fired
+    assert _outside(_organ("lymphoid_aggregate", organ="spleen")).fired
+    # abstained items, invalid replicates and labels off the map are skipped
+    assert not _outside(_organ(None)).fired
+    assert not _outside(_organ("periportal", "crypt", valid=(False, True))).fired
+    assert not _outside(_organ("nephron")).fired
+
+
+def test_label_outside_organ_not_judged_without_organ_or_map() -> None:
+    v = _outside(_organ("periportal", organ=None))
+    assert not v.fired and v.evidence["judged"] is False and "organ" in v.evidence["reason"]
+    v = _outside(_organ("periportal", organ="unset"))
+    assert not v.fired and v.evidence["judged"] is False
+    v = _outside(_organ("keep", vocabulary="punch_qc_verdict@2"))
+    assert not v.fired and v.evidence["judged"] is False and "organs map" in v.evidence["reason"]
+    v = _outside(_organ("periportal", vocabulary=None))
+    assert not v.fired and v.evidence["judged"] is False
+
+
+def test_label_outside_organ_reads_history_then_design() -> None:
+    from stringency.state import StepRecord
+
+    merge = StepRecord(
+        step="01_merge", operation="merge_objects", params={"organ": "lung"}, output_digests={}
+    )
+    v = _outside(_organ("periportal", organ=None, history=(merge,)))
+    assert v.fired and v.evidence["organ_source"] == "history.01_merge.organ"
+    v = _outside(_organ("periportal", organ=None, design_organ="liver"))
+    assert not v.fired and v.evidence["organ_source"] == "design.organ"
+    # the objective's declaration is read before the history
+    v = _outside(_organ("alveolar", organ="lung", history=(merge,)))
+    assert not v.fired and v.evidence["organ_source"] == "objective.params.01_merge.organ"
+
+
+def test_label_outside_organ_on_cell_types() -> None:
+    hep = _organ(
+        "hepatocyte", organ="lung", operation="annotate_clusters", vocabulary="cell_types_mouse@2"
+    )
+    v = _outside(hep)
+    assert v.fired and v.evidence["outside"][0]["label_organs"] == ["liver"]
+    for label in ("alveolar_type2", "macrophage", "mesothelial_cell", "unknown"):
+        c = _organ(
+            label, organ="lung", operation="annotate_clusters", vocabulary="cell_types_mouse@2"
+        )
+        assert not _outside(c).fired, label
+    c = _organ(
+        "enterocyte", organ="gut", operation="annotate_clusters", vocabulary="cell_types_mouse@2"
+    )
+    assert not _outside(c).fired
+    # cell_types_mouse@1 carries no organs map: not judged
+    c = _organ(
+        "hepatocyte", organ="lung", operation="annotate_clusters", vocabulary="cell_types_mouse@1"
+    )
+    assert _outside(c).evidence["judged"] is False
+
+
+# --- the proximity, distance and autocorrelation tools' gates (0.10.0) --------------------------
+
+
+def test_neighbourhood_undeclared_reads_cutoff_bins_and_the_new_scopes() -> None:
+    """0.10.0: `cutoff_um` (a positive number or `delaunay`) is the near/far tool's scale,
+    `bins_um` and `max_distance_um` the distance tool's, `k_neighbors` and `radius_um` Moran's
+    I's. The keys and operations are new, so the version stays 1."""
+    pid = "spatial.neighborhood_undeclared"
+    spec = registry.get(pid)
+    assert spec is not None and spec.version == 1
+    for op in ("test_proximity_effect", "measure_distance", "test_spatial_autocorrelation"):
+        assert spec.in_scope(op), op
+    assert spec.covers_param("test_proximity_effect", "cutoff_um")
+    assert spec.covers_param("measure_distance", "bins_um")
+    prox = {"factor": "timepoint_h", "effector": "cell_type = neutrophil", "n_perms": 20}
+    assert _run(pid, ctx("test_proximity_effect", {}, cutoff_um="30", **prox)) is False
+    assert _run(pid, ctx("test_proximity_effect", {}, cutoff_um=30, **prox)) is False
+    v = registry.get(pid).fn(ctx("test_proximity_effect", {}, cutoff_um="delaunay", **prox))  # type: ignore[union-attr]
+    assert not v.fired and v.evidence == {"scale": {"cutoff_um": "delaunay"}}
+    assert _run(pid, ctx("test_proximity_effect", {}, cutoff_um="0", **prox)) is True
+    assert _run(pid, ctx("test_proximity_effect", {}, cutoff_um="near", **prox)) is True
+    assert _run(pid, ctx("test_proximity_effect", {}, **prox)) is True
+    dist = {"factor": "timepoint_h", "target": "domain = crypt"}
+    assert _run(pid, ctx("measure_distance", {}, bins_um="0,25,50,100", **dist)) is False
+    assert _run(pid, ctx("measure_distance", {}, max_distance_um=200, **dist)) is False
+    assert _run(pid, ctx("measure_distance", {}, bins_um="0", **dist)) is True
+    assert _run(pid, ctx("measure_distance", {}, bins_um="0,0", **dist)) is True
+    assert _run(pid, ctx("measure_distance", {}, **dist)) is True
+    # max_distance_um is a distance tool's scale only
+    assert _run(pid, _nhood(radius_um=None, max_distance_um=200)) is True
+    moran = {"genes": "Isg15", "n_perms": 199}
+    assert _run(pid, ctx("test_spatial_autocorrelation", {}, k_neighbors=6, **moran)) is False
+    assert _run(pid, ctx("test_spatial_autocorrelation", {}, radius_um=40, **moran)) is False
+    assert _run(pid, ctx("test_spatial_autocorrelation", {}, **moran)) is True
+
+
+def test_no_permutation_null_coordinate_floor() -> None:
+    """0.10.0: a coordinate permutation (near/far) reads `ranges.spatial.n_perms_coordinate`,
+    else 20 (Sun24's design); Moran's I reads `ranges.spatial.n_perms`, else 100."""
+    pid = "spatial.no_permutation_null"
+    spec = registry.get(pid)
+    assert spec is not None and spec.version == 1
+    assert spec.in_scope("test_proximity_effect") and spec.in_scope("test_spatial_autocorrelation")
+    assert spec.covers_param("test_proximity_effect", "n_perms")
+    prox = {"factor": "timepoint_h", "cutoff_um": "delaunay"}
+    v = registry.get(pid).fn(ctx("test_proximity_effect", {}, n_perms=20, **prox))  # type: ignore[union-attr]
+    assert not v.fired and v.evidence["floor"] == 20
+    assert v.evidence["floor_key"] == "spatial.n_perms_coordinate"
+    assert _run(pid, ctx("test_proximity_effect", {}, n_perms=19, **prox)) is True
+    assert _run(pid, ctx("test_proximity_effect", {}, **prox)) is True
+    # the label-permutation band does not apply to the coordinate permutation
+    labels_band = {"spatial.n_perms": {"standard": [500, 1e9]}}
+    c = ctx("test_proximity_effect", {}, ranges=labels_band, n_perms=20, **prox)
+    assert _run(pid, c) is False
+    coord_band = {"spatial.n_perms_coordinate": {"standard": [50, 1e9]}}
+    c = ctx("test_proximity_effect", {}, ranges=coord_band, n_perms=20, **prox)
+    assert _run(pid, c) is True
+    moran = {"genes": "Isg15", "k_neighbors": 6}
+    assert _run(pid, ctx("test_spatial_autocorrelation", {}, n_perms=20, **moran)) is True
+    assert _run(pid, ctx("test_spatial_autocorrelation", {}, n_perms=199, **moran)) is False
+    v = registry.get(pid).fn(_nhood(n_perms=10))  # type: ignore[union-attr]
+    assert v.fired and "enrichment null" in v.reason and v.evidence["floor"] == 100

@@ -169,6 +169,44 @@ OPERATIONS["find_markers"] = {
     },
     "additionalProperties": False,
 }
+# 0.10.0: the fine label (the Xenium method's PLAN 3.17 and 3.21): one fine label from three by
+# agreement on evidence-backed claims, and a judgment that chooses among the reviewers' candidates
+# for the contested clusters only (vocabulary fine_label_choice@1).
+OPERATIONS["reconcile_fine_labels"] = {
+    "type": "object",
+    "properties": {
+        "min_reviewers": {
+            **_INT,
+            "description": "candidates a gene or programme claim needs to stand",
+        },
+        "pct_diff_floor": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "the fraction-expressing difference a gene claim needs",
+        },
+        "logfc_min": {
+            **_NUM,
+            "minimum": 0,
+            "description": "the log fold change a gene claim needs",
+        },
+    },
+    "additionalProperties": False,
+}
+# 0.10.0: the domain layer's names (the owner, 2026-10-27): a judgment labels each domain with a
+# known tissue structure from tissue_structures_mouse@1 and a free-text name; a deterministic
+# step writes the consensus onto the layer.
+OPERATIONS["label_domains"] = {"type": "object", "properties": {}, "additionalProperties": False}
+OPERATIONS["apply_domain_labels"] = {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": False,
+}
+OPERATIONS["choose_fine_label"] = {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": False,
+}
 # The annotation judgment, the label application and the upstream report take no parameters.
 OPERATIONS["annotate_clusters"] = {
     "type": "object",
@@ -379,6 +417,167 @@ OPERATIONS["score_pathways"] = {
     },
     "additionalProperties": False,
 }
+# 0.10.0: milestones B to D of the Xenium method's open tools (its docs/open-tools-v2-plan.md
+# section 10.5): distance to a structure, the near/far proximity contrast (Sun24), spatially
+# variable genes, the per-replicate feature table.
+_CLAUSE = {
+    "type": "string",
+    "pattern": "^$|^[A-Za-z_][A-Za-z0-9_.]* (in [^,]+(,[^,]+)*|= .+)$",
+}
+_LAYER = {
+    "group_by": {
+        "type": "string",
+        "description": "the cell-table column whose levels are the rows",
+    },
+    "subset": {
+        **_CLAUSE,
+        "description": "one clause selecting the cells: '<column> in v1,v2' or '<column> = v'; empty is every cell",
+    },
+    "stratify_by": {
+        "type": "string",
+        "description": "a second label column the analysis runs within; empty is none",
+    },
+}
+OPERATIONS["measure_distance"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "target": {
+            **_CLAUSE,
+            "description": "the cells the distance is measured to: '<column> in v1,v2' or '<column> = v'",
+        },
+        "group_by": _LAYER["group_by"],
+        "subset": _LAYER["subset"],
+        "denominator": {
+            "type": "string",
+            "enum": ["all", "subset"],
+            "description": "for proportions per bin: the replicate's cells, or the cells subset kept",
+        },
+        "bins_um": {
+            "type": "string",
+            "pattern": "^[0-9.]+(,[0-9.]+)*$",
+            "description": "the bin edges of the distance in microns, comma-separated",
+        },
+        "max_distance_um": {
+            **_NUM,
+            "minimum": 0,
+            "description": "cells farther than this from the target are left out",
+        },
+        "genes": {
+            "type": "string",
+            "description": "comma-separated genes whose mean normalised value is traced per bin",
+        },
+        "signed": {
+            "type": "boolean",
+            "description": "a domain target gives negative distances inside it",
+        },
+        "min_cells": {
+            **_INT,
+            "description": "a bin and replicate with fewer cells is written but flagged",
+        },
+        "level_colors": {
+            "type": "string",
+            "description": "colours of the factor's levels, as plot_composition",
+        },
+        "seed": {**_INT, "description": "random seed"},
+        "plot_quantities": {
+            "type": "string",
+            "description": "comma-separated groups, scores or genes the figure draws, one panel each; empty draws the six groups whose shares change most and every score and gene",
+        },
+        "plot_max_um": {
+            **_NUM,
+            "minimum": 0,
+            "description": "the figure's x limit in microns; 0 follows the bins that hold data",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["test_proximity_effect"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "effector": {**_CLAUSE, "description": "the cells whose proximity is the exposure"},
+        "target": {**_CLAUSE, "description": "the cells whose state is read"},
+        "cutoff_um": {
+            "type": "string",
+            "pattern": "^(delaunay|[0-9.]+)$",
+            "description": "near is within this many microns of any effector; delaunay takes each punch's median Delaunay edge",
+        },
+        "annulus": {
+            "type": "boolean",
+            "description": "exclude touching cells: near is the ring from the cutoff to twice it",
+        },
+        "sweep": {
+            "type": "string",
+            "pattern": "^[0-9.]+(,[0-9.]+)*$",
+            "description": "multiples of the cutoff the contrast is repeated at",
+        },
+        "scores": {
+            "type": "string",
+            "description": "comma-separated columns of the bound cell_scores to contrast; empty is every one",
+        },
+        "genes": {
+            "type": "string",
+            "description": "comma-separated genes to contrast from the expression h5ad",
+        },
+        "min_cells": {**_INT, "description": "the fewest cells an arm needs in a replicate"},
+        "n_perms": {**_INT, "description": "coordinate permutations within punch behind the null"},
+        "match_by": {
+            "type": "string",
+            "description": "comma-separated columns the far cells are matched on",
+        },
+        "seed": {**_INT, "description": "random seed of the matching and the permutations"},
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["test_spatial_autocorrelation"] = {
+    "type": "object",
+    "properties": {
+        "factor": _FACTOR["factor"],
+        "reference": _FACTOR["reference"],
+        "genes": {
+            "type": "string",
+            "description": "comma-separated genes; empty is every gene detected above min_detected",
+        },
+        "min_detected": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "the fraction of cells with a count a gene needs to be tested",
+        },
+        "k_neighbors": {**_INT, "description": "the spatial neighbours of each cell"},
+        "radius_um": {
+            **_NUM,
+            "minimum": 0,
+            "description": "neighbours within this many microns instead of k",
+        },
+        "n_perms": {**_INT, "description": "permutations behind Moran's I null"},
+        "fdr": {
+            **_NUM,
+            "minimum": 0,
+            "maximum": 1,
+            "description": "the adjusted p below which a gene is called in a punch",
+        },
+        "subset": _LAYER["subset"],
+        "seed": {**_INT, "description": "random seed of the permutations"},
+        "group_by": {
+            "type": "string",
+            "description": "the label layer whose per-cell means are subtracted for the residual Moran's I (cell_type, cluster, domain)",
+        },
+        "within": {
+            **_CLAUSE,
+            "description": "one clause restricting the cells to one group before the graph is built; empty is every cell",
+        },
+    },
+    "additionalProperties": False,
+}
+OPERATIONS["summarise_sample_features"] = {
+    "type": "object",
+    "properties": {
+        "replicate_unit": _FACTOR["replicate_unit"],
+    },
+    "additionalProperties": False,
+}
 OPERATIONS["neighborhood_enrichment"] = {
     "type": "object",
     "properties": {
@@ -387,6 +586,9 @@ OPERATIONS["neighborhood_enrichment"] = {
         "radius_um": {**_NUM, "minimum": 0, "description": "the neighbourhood radius in microns"},
         "n_perms": {**_INT, "description": "label permutations behind the z-scores"},
         "seed": {**_INT, "description": "random seed of the permutations"},
+        "group_by": _LAYER["group_by"],
+        "subset": _LAYER["subset"],
+        "stratify_by": _LAYER["stratify_by"],
     },
     "additionalProperties": False,
 }
