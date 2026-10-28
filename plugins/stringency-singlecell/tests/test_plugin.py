@@ -53,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.2"
+    assert p.version == "0.10.3"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -234,6 +234,46 @@ def test_pair_correlation_operation() -> None:
     assert not ok({"pairs": "enterocyte:macrophage", "r_max_um": 0})
     assert not ok({"pairs": "enterocyte:macrophage", "replicate_unit": "cell"})
     assert not ok({"pairs": "enterocyte:macrophage", "radius_um": 30})
+
+
+def test_measure_intensity_operation() -> None:
+    """0.10.3: the Xenium method's cell-intensity (plan 11.3 item 3): the layer parameters, the
+    quadrat side, the figure's labels and colour map validate; a side of zero, a malformed subset,
+    a colour map with spaces, an unknown replicate unit and an unknown parameter do not."""
+    from stringency.schemas import validate
+
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    schema = p.operations["measure_intensity"].params_schema
+    assert schema.get("additionalProperties") is False
+    assert {"group_by", "subset", "stratify_by", "quadrat_um", "min_cells", "plot_labels"} <= set(
+        schema["properties"]
+    )
+
+    def ok(params: dict) -> bool:
+        return validate(params, schema) == []
+
+    assert ok(
+        {
+            "group_by": "cell_type",
+            "subset": "",
+            "stratify_by": "domain",
+            "quadrat_um": 100,
+            "min_cells": 20,
+            "factor": "timepoint_h",
+            "reference": "control",
+            "replicate_unit": "animal",
+            "plot_labels": "enterocyte,macrophage",
+            "cmap": "viridis",
+            "seed": 0,
+        }
+    )
+    assert ok({"group_by": "cluster", "subset": "cell_type in enterocyte,tuft", "quadrat_um": 50})
+    assert ok({})
+    assert not ok({"quadrat_um": 0})
+    assert not ok({"subset": "cell_type enterocyte"})
+    assert not ok({"cmap": "my map"})
+    assert not ok({"replicate_unit": "cell"})
+    assert not ok({"radius_um": 30})
 
 
 def test_vocabulary_organs() -> None:

@@ -31,6 +31,11 @@ the proximity, distance and autocorrelation tools' scale and permutation gates (
 0.10.2 (2026-10-27, later): the operation `test_pair_correlation` (the Xenium method's
 pair-correlation tool: the cross pair-correlation function per punch with a random-labelling
 envelope, its window mean tested between levels); no predicate judges it yet.
+
+0.10.3 (2026-10-28): the operation `measure_intensity` (the Xenium method's cell-intensity tool:
+per punch and label the intensity over the tissue's quadrats, the dispersion index and the
+chi-square quadrat test of uniform intensity, a homogeneity check before a label-permutation
+tool); no predicate judges it yet.
 """
 
 from __future__ import annotations
@@ -44,7 +49,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.2"
+VERSION = "0.10.3"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 

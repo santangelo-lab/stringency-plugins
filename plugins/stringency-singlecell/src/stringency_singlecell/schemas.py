@@ -995,6 +995,39 @@ OPERATIONS["test_pair_correlation"] = {
     },
     "additionalProperties": False,
 }
+# 0.10.3 (2026-10-28): the Xenium method's cell-intensity 0.1.0 (its `docs/open-tools-v2-plan.md`
+# 11.3 item 3, after Emons24): per punch (and stratum) and label the intensity per mm2 over the
+# tissue's quadrats, the quadrat counts' CV and dispersion index, and the chi-square quadrat test
+# of uniform intensity (Baddeley15 section 6.4); descriptive per level; one map per punch. The
+# layer parameters as the 0.9.0 tools.
+OPERATIONS["measure_intensity"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "group_by": dict(_LAYER["group_by"]),
+        "subset": dict(_LAYER["subset"]),
+        "stratify_by": dict(_LAYER["stratify_by"]),
+        "quadrat_um": {**_POSITIVE, "description": "the side of the square quadrats in microns"},
+        "min_cells": {
+            **_INT,
+            "description": "a label with fewer cells in a window is listed but not tested",
+        },
+        "plot_labels": {
+            "type": "string",
+            "description": (
+                "comma-separated labels the maps draw, one panel each; empty for the six most "
+                "abundant"
+            ),
+        },
+        "cmap": {
+            "type": "string",
+            "pattern": r"^[A-Za-z0-9_]+$",
+            "description": "the sequential colour map of the quadrat counts (viridis, magma, ...)",
+        },
+        "seed": {**_INT, "description": "logged only: nothing in the step is random"},
+    },
+    "additionalProperties": False,
+}
 
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
