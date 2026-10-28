@@ -53,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.1"
+    assert p.version == "0.10.2"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -190,6 +190,50 @@ def test_milestones_b_to_d_and_fine_label_operations() -> None:
         "candidate_c",
         "none",
     )
+
+
+def test_pair_correlation_operation() -> None:
+    """0.10.2: the Xenium method's pair-correlation (plan 4.11): the pairs, the scale in microns,
+    the relabellings and the layer parameters validate; a malformed pair list, a window that is
+    not lo,hi, too few relabellings and an unknown parameter do not."""
+    from stringency.schemas import validate
+
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    schema = p.operations["test_pair_correlation"].params_schema
+    assert schema.get("additionalProperties") is False
+    assert {"pairs", "group_by", "subset", "stratify_by", "r_summary_um", "n_sim"} <= set(
+        schema["properties"]
+    )
+
+    def ok(params: dict) -> bool:
+        return validate(params, schema) == []
+
+    assert ok(
+        {
+            "pairs": "enterocyte:macrophage;transit_amplifying_cell:paneth_cell",
+            "group_by": "cell_type",
+            "subset": "",
+            "stratify_by": "domain",
+            "r_max_um": 300,
+            "r_step_um": 2.5,
+            "r_summary_um": "20,30",
+            "r_envelope_min_um": 10,
+            "n_sim": 99,
+            "min_cells": 20,
+            "factor": "timepoint_h",
+            "reference": "control",
+            "replicate_unit": "animal",
+            "level_colors": "",
+            "seed": 0,
+        }
+    )
+    assert ok({"pairs": "3:9", "group_by": "cluster", "subset": "cell_type in enterocyte,tuft"})
+    assert not ok({"pairs": "enterocyte,macrophage"})
+    assert not ok({"pairs": "enterocyte:macrophage", "r_summary_um": "20-30"})
+    assert not ok({"pairs": "enterocyte:macrophage", "n_sim": 9})
+    assert not ok({"pairs": "enterocyte:macrophage", "r_max_um": 0})
+    assert not ok({"pairs": "enterocyte:macrophage", "replicate_unit": "cell"})
+    assert not ok({"pairs": "enterocyte:macrophage", "radius_um": 30})
 
 
 def test_vocabulary_organs() -> None:

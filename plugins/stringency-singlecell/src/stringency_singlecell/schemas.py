@@ -942,6 +942,59 @@ OPERATIONS["call_domains"] = {
     },
     "additionalProperties": False,
 }
+# 0.10.2 (2026-10-27, later): the Xenium method's pair-correlation 0.1.0 (its
+# `docs/open-tools-v2-plan.md` 4.11): co-location of two labels over distance, the cross
+# pair-correlation function g(r) per punch with a global envelope from random relabellings
+# (Baddeley15), its mean over a summary window per replicate tested between levels
+# (Weeratunga23). The layer parameters as the 0.9.0 tools; the pairs one string.
+_POSITIVE = {"type": "number", "exclusiveMinimum": 0}
+OPERATIONS["test_pair_correlation"] = {
+    "type": "object",
+    "properties": {
+        **_FACTOR,
+        "pairs": {
+            "type": "string",
+            "pattern": r"^\s*[^:;]+:[^:;]+(\s*;\s*[^:;]+:[^:;]+)*\s*;?\s*$",
+            "description": (
+                "the pairs of labels whose co-location is measured, `a:b` separated by `;` "
+                "(enterocyte:macrophage;macrophage:t_cell), each a value of group_by"
+            ),
+        },
+        "group_by": dict(_LAYER["group_by"]),
+        "subset": dict(_LAYER["subset"]),
+        "stratify_by": dict(_LAYER["stratify_by"]),
+        "r_max_um": {**_POSITIVE, "description": "g(r) is estimated from 0 to this many microns"},
+        "r_step_um": {**_POSITIVE, "description": "the spacing of the r grid in microns"},
+        "r_summary_um": {
+            "type": "string",
+            "pattern": r"^\s*[0-9.]+\s*,\s*[0-9.]+\s*$",
+            "description": "the window `lo,hi` in microns whose mean g is each punch's statistic",
+        },
+        "r_envelope_min_um": {
+            **_NUM,
+            "minimum": 0,
+            "description": (
+                "the global envelope is simultaneous from this distance to r_max_um (below a "
+                "cell width g rests on a few touching pairs)"
+            ),
+        },
+        "n_sim": {
+            "type": "integer",
+            "minimum": 19,
+            "description": "random relabellings of each punch's cells behind its global envelope",
+        },
+        "min_cells": {
+            **_INT,
+            "description": "a punch with fewer cells of either label of a pair is not run for it",
+        },
+        "level_colors": {
+            "type": "string",
+            "description": "colours of the factor's levels, as plot_composition",
+        },
+        "seed": {**_INT, "description": "random seed of the relabellings"},
+    },
+    "additionalProperties": False,
+}
 
 
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (

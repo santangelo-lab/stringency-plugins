@@ -27,6 +27,10 @@ almost all from one replicate); `spatial.neighborhood_undeclared` reads `k_neigh
 0.10.0 (2026-10-27, later): vocabularies scoped by organ, an `organs:` map in the YAML loaded as
 `VOCABULARY_ORGANS` beside the flat label tuples the engine reads, and `sc.label_outside_organ`;
 the proximity, distance and autocorrelation tools' scale and permutation gates (README).
+
+0.10.2 (2026-10-27, later): the operation `test_pair_correlation` (the Xenium method's
+pair-correlation tool: the cross pair-correlation function per punch with a random-labelling
+envelope, its window mean tested between levels); no predicate judges it yet.
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.1"
+VERSION = "0.10.2"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
