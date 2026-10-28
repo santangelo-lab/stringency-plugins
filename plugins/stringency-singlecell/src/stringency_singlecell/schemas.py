@@ -1016,7 +1016,7 @@ OPERATIONS["measure_intensity"] = {
             "type": "string",
             "description": (
                 "comma-separated labels the maps draw, one panel each; empty for the six most "
-                "abundant"
+                "abundant, the technical labels (low_quality, mixed_doublet, unknown) left out"
             ),
         },
         "cmap": {
