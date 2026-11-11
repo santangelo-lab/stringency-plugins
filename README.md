@@ -10,7 +10,7 @@ repositories, which depend on these plugins: `stringency-xenium-method` and
 
 | plugin | domain | status |
 |---|---|---|
-| `plugins/stringency-singlecell` | single-cell and spatial (Xenium), droplet scRNA-seq | 0.10.3 (2026-10-28; its package floor is engine 0.2.19, its tests run against the engine tag pinned under `tool.uv.sources`): the object types, extractors, design schema, predicates, vocabularies and typed operations used by `stringency-xenium-method` (QC, upstream, the spatial layers and the open-mode tools) and by `stringency-scrnaseq-scanpy-method` (the scRNA-seq QC, PCA, normalisation and pseudobulk predicates). The version history is in its README; this row is updated at each tag |
+| `plugins/stringency-singlecell` | single-cell and spatial (Xenium), droplet scRNA-seq | 0.10.4 (2026-11-11; its package floor is engine 0.2.19, its tests run against the engine tag pinned under `tool.uv.sources`): the object types, extractors, design schema, predicates, vocabularies and typed operations used by `stringency-xenium-method` (QC, upstream, the spatial layers and the open-mode tools) and by `stringency-scrnaseq-scanpy-method` (the scRNA-seq QC, PCA, normalisation and pseudobulk predicates). The version history is in its README; this row is updated at each tag |
 | `plugins/stringency-bulkrna` | bulk RNA-seq | not started (engine roadmap Lane B, dormant) |
 
 ## Develop
