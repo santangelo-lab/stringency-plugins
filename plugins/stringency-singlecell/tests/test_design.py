@@ -14,7 +14,7 @@ from stringency.schemas import schema_is_valid, validate
 from stringency_singlecell.schemas import DESIGN_SCHEMA, OPERATIONS
 from tests.helpers import DESIGN
 
-LYONS_DESIGN = Path("/lab/projects/Lyons_CLP/design.yml")
+LYONS_DESIGN = Path("/lab/projects/Lyons_CLP/v1_clp_only/design.yml")
 
 
 def test_design_schema_is_a_valid_schema() -> None:
@@ -113,7 +113,9 @@ def test_plugin_surface() -> None:
     }
     for ot in p.object_types.values():
         assert ot.extractor in p.tools and p.tools[ot.extractor].script.exists()
-        assert ot.extractor_id == f"sc.{ot.name}@1"
+        # the anndata extractor is at version 2 from 0.10.4 (`fields.columns`); the rest at 1
+        version = 2 if ot.name == "anndata" else 1
+        assert ot.extractor_id == f"sc.{ot.name}@{version}"
     assert p.defaults["min_cells_per_punch"] == 500
     assert set(p.predicates()) == {
         "sc.area_join_unverified",

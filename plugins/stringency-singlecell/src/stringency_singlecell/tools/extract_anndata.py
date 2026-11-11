@@ -4,8 +4,13 @@ that has anndata installed; the engine never imports it.
 
 usage: extract_anndata.py <object.h5ad> <design.json>
 Prints the envelope: extractor, type, n_obs, n_var, fields (obs columns with dtype, n_unique,
-levels for categoricals; obsm, layers, uns flags), counts_per_group computed from the design's
-factors and units, and a domain block.
+and levels for a categorical or text column of fifty values or fewer; obsm, layers, uns flags),
+counts_per_group computed from the design's factors and units, and a domain block.
+
+Version 2 (plugin 0.10.4): the obs columns are also written as `fields.columns`, the key the
+engine reads for an object's columns (`init.column_missing`; a pipeline's names, engine
+0.2.42), and a text column of fifty values or fewer lists its values as a categorical does.
+`fields.obs` stays, since the plugin's own predicates read it.
 """
 
 from __future__ import annotations
@@ -52,6 +57,8 @@ def main(argv):  # type: ignore[no-untyped-def]
         entry = {"dtype": str(s.dtype), "n_unique": int(s.nunique())}
         if str(s.dtype) == "category" and s.nunique() <= 50:
             entry["levels"] = [str(x) for x in s.cat.categories]
+        elif str(s.dtype) in ("object", "string", "str") and s.nunique() <= 50:
+            entry["levels"] = sorted(str(x) for x in s.dropna().unique())
         fields[c] = entry
     uns = adata.uns if adata.uns is not None else {}
     flags = {k: True for k in ("log1p", "hvg", "neighbors", "pca") if k in uns}
@@ -59,12 +66,13 @@ def main(argv):  # type: ignore[no-untyped-def]
     if "params" in leiden and "random_state" in leiden["params"]:
         flags["leiden_random_state"] = leiden["params"]["random_state"]
     out = {
-        "extractor": "sc.anndata@1",
+        "extractor": "sc.anndata@2",
         "type": "anndata",
         "n_obs": int(adata.n_obs),
         "n_var": int(adata.n_vars),
         "fields": {
             "obs": fields,
+            "columns": fields,
             "obsm": sorted(adata.obsm.keys()),
             "layers": sorted(adata.layers.keys()),
             "uns_flags": flags,

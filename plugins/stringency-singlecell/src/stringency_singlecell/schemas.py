@@ -750,9 +750,9 @@ for _op in ("test_differential_expression", "compose_cells"):
 # spatial domains from the neighbour-label composition. Values arrive as text from `--set`, so a
 # list is a comma-separated string and a clause is one string.
 _COLUMN = "[A-Za-z_][A-Za-z0-9_.]*"
-_CLAUSE = rf"^$|^\s*{_COLUMN}\s+in\s+[^,]+(\s*,\s*[^,]+)*\s*$|^\s*{_COLUMN}\s*=\s*[^,]+$"
+_CLAUSE_PATTERN = rf"^$|^\s*{_COLUMN}\s+in\s+[^,]+(\s*,\s*[^,]+)*\s*$|^\s*{_COLUMN}\s*=\s*[^,]+$"
 _OPTIONAL_COLUMN = rf"^$|^{_COLUMN}$"
-_LAYER: dict[str, dict[str, Any]] = {
+_LAYER_PARAMS: dict[str, dict[str, Any]] = {
     "group_by": {
         "type": "string",
         "pattern": rf"^{_COLUMN}$",
@@ -763,7 +763,7 @@ _LAYER: dict[str, dict[str, Any]] = {
     },
     "subset": {
         "type": "string",
-        "pattern": _CLAUSE,
+        "pattern": _CLAUSE_PATTERN,
         "description": (
             "one clause selecting the cells that enter, `<column> in <v1>,<v2>` or "
             "`<column> = <v>`; empty means every cell"
@@ -799,7 +799,7 @@ _LAYER_KEYS = {
     "neighborhood_enrichment": ("group_by", "subset", "stratify_by"),
 }
 for _op, _keys in _LAYER_KEYS.items():
-    OPERATIONS[_op]["properties"].update({k: dict(_LAYER[k]) for k in _keys})
+    OPERATIONS[_op]["properties"].update({k: dict(_LAYER_PARAMS[k]) for k in _keys})
 
 OPERATIONS["test_differential_expression"]["properties"].update(
     {
@@ -814,7 +814,7 @@ OPERATIONS["test_differential_expression"]["properties"].update(
         },
         "within": {
             "type": "string",
-            "pattern": _CLAUSE,
+            "pattern": _CLAUSE_PATTERN,
             "description": (
                 "one clause applied before the contrast, `<column> in <v1>,<v2>` or "
                 "`<column> = <v>` (one lineage, one time point); empty for none"
@@ -891,7 +891,7 @@ OPERATIONS["sweep_domains"] = {
     "type": "object",
     "properties": {
         "group_by": {
-            **_LAYER["group_by"],
+            **_LAYER_PARAMS["group_by"],
             "description": "the label column whose neighbour composition defines a domain",
         },
         "k_neighbors": {
@@ -960,9 +960,9 @@ OPERATIONS["test_pair_correlation"] = {
                 "(enterocyte:macrophage;macrophage:t_cell), each a value of group_by"
             ),
         },
-        "group_by": dict(_LAYER["group_by"]),
-        "subset": dict(_LAYER["subset"]),
-        "stratify_by": dict(_LAYER["stratify_by"]),
+        "group_by": dict(_LAYER_PARAMS["group_by"]),
+        "subset": dict(_LAYER_PARAMS["subset"]),
+        "stratify_by": dict(_LAYER_PARAMS["stratify_by"]),
         "r_max_um": {**_POSITIVE, "description": "g(r) is estimated from 0 to this many microns"},
         "r_step_um": {**_POSITIVE, "description": "the spacing of the r grid in microns"},
         "r_summary_um": {
@@ -1004,9 +1004,9 @@ OPERATIONS["measure_intensity"] = {
     "type": "object",
     "properties": {
         **_FACTOR,
-        "group_by": dict(_LAYER["group_by"]),
-        "subset": dict(_LAYER["subset"]),
-        "stratify_by": dict(_LAYER["stratify_by"]),
+        "group_by": dict(_LAYER_PARAMS["group_by"]),
+        "subset": dict(_LAYER_PARAMS["subset"]),
+        "stratify_by": dict(_LAYER_PARAMS["stratify_by"]),
         "quadrat_um": {**_POSITIVE, "description": "the side of the square quadrats in microns"},
         "min_cells": {
             **_INT,

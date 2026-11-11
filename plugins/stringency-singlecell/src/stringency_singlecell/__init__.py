@@ -36,6 +36,11 @@ envelope, its window mean tested between levels); no predicate judges it yet.
 per punch and label the intensity over the tissue's quadrats, the dispersion index and the
 chi-square quadrat test of uniform intensity, a homogeneity check before a label-permutation
 tool); no predicate judges it yet.
+
+0.10.4 (2026-11-10): the `anndata` extractor at version 2 writes the obs columns as
+`fields.columns` beside `fields.obs`, and the values of a text column of fifty or fewer; the
+engine's `init.column_missing` and a pipeline's names (engine 0.2.42) read that key, and saw no
+column of an h5ad before.
 """
 
 from __future__ import annotations
@@ -49,7 +54,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.3"
+VERSION = "0.10.4"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -107,8 +112,8 @@ def _load_vocabulary_organs() -> dict[str, dict[str, tuple[str, ...]]]:
 VOCABULARY_ORGANS: dict[str, dict[str, tuple[str, ...]]] = _load_vocabulary_organs()
 
 
-def _ot(name: str, extractor: str) -> ObjectType:
-    return ObjectType(name=name, extractor=extractor, extractor_id=f"sc.{name}@1")
+def _ot(name: str, extractor: str, version: int = 1) -> ObjectType:
+    return ObjectType(name=name, extractor=extractor, extractor_id=f"sc.{name}@{version}")
 
 
 OBJECT_TYPES = {
@@ -117,7 +122,7 @@ OBJECT_TYPES = {
     "tma_layout": _ot("tma_layout", "extract_tma_layout"),
     "punch_bundle_set": _ot("punch_bundle_set", "extract_punch_bundle_set"),
     "qc_object_set": _ot("qc_object_set", "extract_qc_object_set"),
-    "anndata": _ot("anndata", "extract_anndata"),
+    "anndata": _ot("anndata", "extract_anndata", 2),
     "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
     "seurat_object": _ot("seurat_object", "extract_seurat"),
     "cluster_evidence": _ot("cluster_evidence", "extract_cluster_evidence"),
