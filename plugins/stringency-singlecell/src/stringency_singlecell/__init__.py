@@ -51,7 +51,17 @@ name of the factor a study is laid out by (a time course's time point), so a met
 read it from the design in place of a factor name fixed in the pipeline (the Xenium method's
 X3; the owner's choice, 2026-11-11).
 
-0.10.6 (2026-11-11): the Xenium method's delivery step begins. Object types `if_image` (a slide's
+0.10.7 (2026-11-11): the
+vocabularies of seven more organs for the Xenium method. `cell_types_mouse@3` is @2 with 38
+labels the owner approved organ by organ for kidney, skin, heart, lymph node, large intestine,
+the female reproductive tract and brain (names from established references: CELLxGENE,
+CellGuide, the Cell Ontology), and organs added to seventeen labels @2 had.
+`tissue_structures_mouse@2` is @1 with those organs' structures, `surface_epithelium` for the
+large intestine, and large_intestine out of `villus`. Both are written by the method's
+`tools/build_vocabulary_tables.py` from its tables. `ORGANS` gains `lymph_node` and
+`female_reproductive_tract`, read also as `ln` and `frt`. The older versions are unchanged.
+
+0.10.8 (2026-11-11): the Xenium method's delivery step begins. Object types `if_image` (a slide's
 immunofluorescence image, TIFF or OME-TIFF; the extractor reads its axes, channel names, shape
 and pixel size, never its pixels) and `alignment_matrix` (the 3 by 3 matrix a person made to
 align it to the Xenium run; its form, scale and rotation), both declared inputs, and the
@@ -74,7 +84,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.6"
+VERSION = "0.10.8"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -90,6 +100,8 @@ ORGANS = (
     "heart",
     "skin",
     "brain",
+    "lymph_node",  # 0.10.7
+    "female_reproductive_tract",  # 0.10.7
 )
 
 
@@ -151,7 +163,7 @@ OBJECT_TYPES = {
     "analysis_summary": _ot("analysis_summary", "extract_analysis_summary"),
     # 0.8.3: a person's declared lineage panels (CSV lineage, gene), an input and never a parameter
     "marker_panels": _ot("marker_panels", "extract_marker_panels"),
-    # 0.10.6: a slide's immunofluorescence image and the matrix that aligns it to the Xenium run,
+    # 0.10.8: a slide's immunofluorescence image and the matrix that aligns it to the Xenium run,
     # both declared inputs of the Xenium method's `if-intensity` (its delivery step, X6)
     "if_image": _ot("if_image", "extract_if_image"),
     "alignment_matrix": _ot("alignment_matrix", "extract_alignment_matrix"),

@@ -180,6 +180,8 @@ ORGAN_ALIASES = {
     "small intestine": "small_intestine",
     "lgintest": "large_intestine",
     "colon": "large_intestine",
+    "ln": "lymph_node",  # 0.10.7
+    "frt": "female_reproductive_tract",  # 0.10.7
 }
 UNSET_ORGAN = {"", "unset", "none", "null", "unknown"}
 

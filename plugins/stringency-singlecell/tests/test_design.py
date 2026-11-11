@@ -165,7 +165,7 @@ def test_plugin_surface() -> None:
         "spatial.domain_is_replicate",
         # vocabularies scoped by organ (0.10.0)
         "sc.label_outside_organ",
-        # the delivery step (0.10.6)
+        # the delivery step (0.10.8)
         "sc.threshold_from_fallback_control",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (

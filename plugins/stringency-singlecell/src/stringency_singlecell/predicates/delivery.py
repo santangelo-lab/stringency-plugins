@@ -1,4 +1,4 @@
-"""Predicates for the delivery step (plugin 0.10.6; the Xenium method's `call-delivered`, its
+"""Predicates for the delivery step (plugin 0.10.8; the Xenium method's `call-delivered`, its
 PLAN 10.6): the module writes its facts as an `analysis_summary` (`delivery_facts`), which the
 plugin's stdlib extractor carries into the state, so a predicate reads which control each
 threshold came from without touching the data. Must-fire and must-pass fixtures in

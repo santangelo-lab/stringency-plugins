@@ -241,7 +241,7 @@ def _organ(
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
     # vocabularies scoped by organ (plugin 0.10.0): a liver structure in a gut project
     ("sc.label_outside_organ", lambda: _organ("crypt", "periportal"), lambda: _organ("crypt")),
-    # the delivery step (plugin 0.10.6): a threshold from a control that is not the group's own
+    # the delivery step (plugin 0.10.8): a threshold from a control that is not the group's own
     (
         "sc.threshold_from_fallback_control",
         lambda: _delivery([_OWN, _BORROWED]),

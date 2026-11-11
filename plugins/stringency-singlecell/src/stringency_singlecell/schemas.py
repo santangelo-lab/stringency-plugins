@@ -1037,7 +1037,7 @@ OPERATIONS["measure_intensity"] = {
 }
 
 
-# measure_if_intensity (0.10.6; the Xenium method's `if-intensity`, its delivery step): per cell,
+# measure_if_intensity (0.10.8; the Xenium method's `if-intensity`, its delivery step): per cell,
 # the mean, minimum and maximum of one channel of an aligned immunofluorescence image over the
 # pixels inside the cell's polygon, with how much of the polygon lies on the image. The lab's
 # pyMFI calculation. The image, the matrix and which punch reads which are inputs, not
@@ -1070,7 +1070,7 @@ OPERATIONS["measure_if_intensity"] = {
 }
 
 
-# call_delivered (0.10.6; the Xenium method's `call-delivered`): per cell, delivered or not by
+# call_delivered (0.10.8; the Xenium method's `call-delivered`): per cell, delivered or not by
 # the protein readout (the image intensity at or above a percentile of the control cells of the
 # same slide and tissue, with a ladder of fallback controls) and by each transcript probe (its
 # count at or above a floor the project states in an input table, never a default).

@@ -1,0 +1,140 @@
+# tissue_structures_mouse@2: tissue_structures_mouse@1 with the structures the owner approved
+# (2026-11-11) for kidney, skin, heart, lymph node, the female reproductive tract and brain,
+# `surface_epithelium` for the large intestine, `vascular` in those organs, and large_intestine
+# out of `villus` (the colon has no villi). @1 is kept unchanged for the projects that pinned it.
+# Written by the Xenium method's tools/build_vocabulary_tables.py from its
+# modules/label-domains/tissue_structures_mouse.csv; do not edit by hand.
+name: tissue_structures_mouse
+version: 2
+labels:
+  - crypt
+  - villus
+  - lamina_propria
+  - submucosa
+  - muscularis
+  - serosa
+  - lymphoid_follicle
+  - mesenteric_fat
+  - periportal
+  - pericentral
+  - portal_tract
+  - central_vein
+  - liver_capsule
+  - alveolar
+  - airway
+  - vascular
+  - pleura
+  - lymphoid_aggregate
+  - red_pulp
+  - white_pulp
+  - marginal_zone
+  - capsule_trabeculae
+  - surface_epithelium
+  - renal_cortex
+  - glomerulus
+  - outer_medulla
+  - inner_medulla
+  - renal_pelvis
+  - kidney_capsule
+  - myocardium
+  - endocardium
+  - epicardium
+  - cardiac_valve
+  - epidermis
+  - hair_follicle
+  - dermis
+  - hypodermis
+  - panniculus_carnosus
+  - follicle
+  - germinal_center
+  - paracortex
+  - medulla
+  - subcapsular_sinus
+  - capsule
+  - ovarian_follicle
+  - corpus_luteum
+  - ovarian_stroma
+  - endometrium
+  - myometrium
+  - oviduct
+  - adnexal_fat
+  - cerebral_cortex
+  - white_matter
+  - hippocampus
+  - striatum
+  - thalamus
+  - hypothalamus
+  - midbrain
+  - cerebellum
+  - choroid_plexus
+  - ventricular_lining
+  - meninges
+  - inflammatory_focus
+  - mixed
+  - unknown
+organs:
+  crypt:               [small_intestine, large_intestine]
+  villus:              [small_intestine]
+  lamina_propria:      [small_intestine, large_intestine]
+  submucosa:           [small_intestine, large_intestine]
+  muscularis:          [small_intestine, large_intestine]
+  serosa:              [small_intestine, large_intestine]
+  lymphoid_follicle:   [small_intestine, large_intestine]
+  mesenteric_fat:      [small_intestine, large_intestine]
+  periportal:          [liver]
+  pericentral:         [liver]
+  portal_tract:        [liver]
+  central_vein:        [liver]
+  liver_capsule:       [liver]
+  alveolar:            [lung]
+  airway:              [lung]
+  vascular:            [liver, lung, small_intestine, large_intestine, spleen, kidney, heart, skin, lymph_node, female_reproductive_tract, brain]
+  pleura:              [lung]
+  lymphoid_aggregate:  [lung, small_intestine, large_intestine, liver]
+  red_pulp:            [spleen]
+  white_pulp:          [spleen]
+  marginal_zone:       [spleen]
+  capsule_trabeculae:  [spleen]
+  surface_epithelium:  [large_intestine]
+  renal_cortex:        [kidney]
+  glomerulus:          [kidney]
+  outer_medulla:       [kidney]
+  inner_medulla:       [kidney]
+  renal_pelvis:        [kidney]
+  kidney_capsule:      [kidney]
+  myocardium:          [heart]
+  endocardium:         [heart]
+  epicardium:          [heart]
+  cardiac_valve:       [heart]
+  epidermis:           [skin]
+  hair_follicle:       [skin]
+  dermis:              [skin]
+  hypodermis:          [skin]
+  panniculus_carnosus: [skin]
+  follicle:            [lymph_node]
+  germinal_center:     [lymph_node]
+  paracortex:          [lymph_node]
+  medulla:             [lymph_node]
+  subcapsular_sinus:   [lymph_node]
+  capsule:             [lymph_node]
+  ovarian_follicle:    [female_reproductive_tract]
+  corpus_luteum:       [female_reproductive_tract]
+  ovarian_stroma:      [female_reproductive_tract]
+  endometrium:         [female_reproductive_tract]
+  myometrium:          [female_reproductive_tract]
+  oviduct:             [female_reproductive_tract]
+  adnexal_fat:         [female_reproductive_tract]
+  cerebral_cortex:     [brain]
+  white_matter:        [brain]
+  hippocampus:         [brain]
+  striatum:            [brain]
+  thalamus:            [brain]
+  hypothalamus:        [brain]
+  midbrain:            [brain]
+  cerebellum:          [brain]
+  choroid_plexus:      [brain]
+  ventricular_lining:  [brain]
+  meninges:            [brain]
+  inflammatory_focus:  [any]
+  mixed:               [any]
+  unknown:             [any]

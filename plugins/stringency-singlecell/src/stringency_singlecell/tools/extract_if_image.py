@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State extractor for object type `if_image` (plugin 0.10.6): an immunofluorescence image of a
+"""State extractor for object type `if_image` (plugin 0.10.8): an immunofluorescence image of a
 slide as a TIFF or OME-TIFF, declared as an input of a step that measures it inside each cell
 (the Xenium method's `if-intensity`). Reads the file's metadata only, never its pixels. Needs
 tifffile, so it runs in the module's environment (the `xenium-py` image).

@@ -896,7 +896,7 @@ def test_shuffle_coordinates_h5ad(tmp_path: Path) -> None:
 
 
 def test_extract_alignment_matrix(tmp_path: Path, design_json: Path) -> None:
-    """0.10.6: the form of a hand-made alignment matrix and what it says, never whether it is
+    """0.10.8: the form of a hand-made alignment matrix and what it says, never whether it is
     right. The numbers are the form of the lab's matrices: a half turn and a scale of 2.34."""
     f = tmp_path / "matrix.csv"
     f.write_text("-2.3361,0.01158,49847.96\n-0.01158,-2.3361,54773.15\n0,0,1\n")
@@ -918,7 +918,7 @@ def test_extract_alignment_matrix(tmp_path: Path, design_json: Path) -> None:
 
 
 def test_extract_if_image(tmp_path: Path, design_json: Path) -> None:
-    """0.10.6: an image's metadata, read without its pixels: the channel names a step's channel
+    """0.10.8: an image's metadata, read without its pixels: the channel names a step's channel
     is one of, the axes, and whether it is one plane."""
     np = pytest.importorskip("numpy")
     tifffile = pytest.importorskip("tifffile")

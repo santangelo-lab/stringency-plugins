@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State extractor for object type `alignment_matrix` (plugin 0.10.6): the 3 by 3 affine matrix
+"""State extractor for object type `alignment_matrix` (plugin 0.10.8): the 3 by 3 affine matrix
 that aligns an image to a Xenium run, as Xenium Explorer exports it (image pixels to Xenium
 pixels), a CSV of three rows of three numbers. Made by a person and declared as an input: the
 extractor reads its form and what it says (scale, rotation), never whether it is right.

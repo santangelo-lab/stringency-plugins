@@ -53,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.6"
+    assert p.version == "0.10.8"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -281,7 +281,12 @@ def test_vocabulary_organs() -> None:
     flat label tuple and the plugin keeps the map in `VOCABULARY_ORGANS`."""
     from stringency_singlecell import ORGANS, PLUGIN, VOCABULARY_ORGANS
 
-    assert set(VOCABULARY_ORGANS) == {"tissue_structures_mouse@1", "cell_types_mouse@2"}
+    assert set(VOCABULARY_ORGANS) == {
+        "tissue_structures_mouse@1",
+        "tissue_structures_mouse@2",
+        "cell_types_mouse@2",
+        "cell_types_mouse@3",
+    }
     for ref, organs in VOCABULARY_ORGANS.items():
         labels = PLUGIN.vocabularies[ref]
         assert set(organs) == set(labels), ref  # every label scoped
@@ -296,8 +301,36 @@ def test_vocabulary_organs() -> None:
     assert ct["mesothelial_cell"] == ("liver", "spleen", "lung", "small_intestine")
 
 
+def test_vocabularies_of_seven_more_organs() -> None:
+    """0.10.7: `cell_types_mouse@3` and `tissue_structures_mouse@2` only add to the versions
+    before them, but for the colon's villus, and scope the new labels to the new organs."""
+    from stringency_singlecell import ORGANS, PLUGIN, VOCABULARY_ORGANS
+
+    assert {"lymph_node", "female_reproductive_tract"} <= set(ORGANS)
+    v2, v3 = PLUGIN.vocabularies["cell_types_mouse@2"], PLUGIN.vocabularies["cell_types_mouse@3"]
+    assert set(v2) < set(v3) and len(v3) == len(v2) + 38 and len(set(v3)) == len(v3)
+    o2, o3 = VOCABULARY_ORGANS["cell_types_mouse@2"], VOCABULARY_ORGANS["cell_types_mouse@3"]
+    for label, organs in o2.items():  # a label @2 had keeps every organ it had
+        assert set(organs) <= set(o3[label]), label
+    assert o3["podocyte"] == ("kidney",) and o3["microglia"] == ("brain",)
+    assert o3["theca_luteal_cell"] == ("female_reproductive_tract",)
+    assert o3["high_endothelial_venule_cell"] == ("lymph_node",)
+    assert "heart" in o3["cardiomyocyte"] and "large_intestine" in o3["enterocyte"]
+    assert o3["paneth_cell"] == ("small_intestine",)  # the mouse colon has none
+    # a neuron is offered everywhere but the intestines (enteric_neuron) and brain (its classes)
+    assert set(o3["neuron"]) == set(ORGANS) - {"small_intestine", "large_intestine", "brain"}
+    s1 = VOCABULARY_ORGANS["tissue_structures_mouse@1"]
+    s2 = VOCABULARY_ORGANS["tissue_structures_mouse@2"]
+    assert set(s1) < set(s2) and len(s2) == len(s1) + 40
+    for label, organs in s1.items():
+        if label != "villus":
+            assert set(organs) <= set(s2[label]), label
+    assert s2["villus"] == ("small_intestine",) and s2["surface_epithelium"] == ("large_intestine",)
+    assert set(s2["vascular"]) == set(ORGANS) and s2["glomerulus"] == ("kidney",)
+
+
 def test_measure_if_intensity_operation() -> None:
-    """0.10.6: the operation of the Xenium method's `if-intensity`; the image, the matrix and
+    """0.10.8: the operation of the Xenium method's `if-intensity`; the image, the matrix and
     the channel are inputs, so the parameters are only how a cell is measured."""
     from stringency.schemas import validate
 
