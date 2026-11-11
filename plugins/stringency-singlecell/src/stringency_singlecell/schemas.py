@@ -44,6 +44,13 @@ DESIGN_SCHEMA: dict[str, Any] = {
         "factors": {"type": "object", "minProperties": 1, "additionalProperties": _FACTOR},
         "batch": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
         "replication_unit": {"type": "string", "minLength": 1},
+        # The factor (by name, a key of `factors`) a study is laid out by: a time course's time
+        # point, a dose series' dose. A method's reports, compositions and batch assessment
+        # group by it. Optional, said once here so a pipeline need not fix one study's factor
+        # name in its steps (0.10.5; the Xenium method's X3, engine PLAN L178). The schema
+        # cannot say that the name is one of `factors`; the modules that read it stop when it
+        # is not.
+        "primary_factor": {"type": "string", "minLength": 1},
         "holdout": {"type": "array"},
         "notes": {"type": "string"},
         "source": {"type": "string"},

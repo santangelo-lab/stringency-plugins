@@ -41,6 +41,15 @@ tool); no predicate judges it yet.
 `fields.columns` beside `fields.obs`, and the values of a text column of fifty or fewer; the
 engine's `init.column_missing` and a pipeline's names (engine 0.2.42) read that key, and saw no
 column of an h5ad before.
+
+0.10.5 (2026-11-11; engine PLAN L186): the `seurat_object` extractor at version 2 does the same
+for a Seurat object: the meta.data columns as `fields.columns` beside `fields.obs`, and the
+default assay's feature metadata columns as `fields.feature_columns`. A design column missing
+from a raw Seurat input is now refused at `init`, and a pipeline's parameter can name a column
+of a Seurat object (`text: column`). The design schema takes an optional `primary_factor`, the
+name of the factor a study is laid out by (a time course's time point), so a method's steps
+read it from the design in place of a factor name fixed in the pipeline (the Xenium method's
+X3; the owner's choice, 2026-11-11).
 """
 
 from __future__ import annotations
@@ -54,7 +63,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.4"
+VERSION = "0.10.5"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -124,7 +133,7 @@ OBJECT_TYPES = {
     "qc_object_set": _ot("qc_object_set", "extract_qc_object_set"),
     "anndata": _ot("anndata", "extract_anndata", 2),
     "qc_metrics_table": _ot("qc_metrics_table", "extract_qc_metrics_table"),
-    "seurat_object": _ot("seurat_object", "extract_seurat"),
+    "seurat_object": _ot("seurat_object", "extract_seurat", 2),
     "cluster_evidence": _ot("cluster_evidence", "extract_cluster_evidence"),
     "batch_evidence": _ot("batch_evidence", "extract_batch_evidence"),
     # 0.8.0: a module's named facts (a JSON object), the state envelope for droplet methods
