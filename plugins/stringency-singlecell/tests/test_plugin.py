@@ -11,7 +11,7 @@ def test_plugin_loads() -> None:
         and "differential_expression" in p.objective_questions
     )
     assert (
-        len(p.predicates()) == 26
+        len(p.predicates()) == 27
     )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review;
     # 0.8.5 sc.fine_label_uncited; 0.8.6 sc.louvain_too_large; 0.9.0 spatial.domain_is_replicate;
     # 0.10.0 sc.label_outside_organ

@@ -48,7 +48,11 @@ immunofluorescence image, TIFF or OME-TIFF; the extractor reads its axes, channe
 and pixel size, never its pixels) and `alignment_matrix` (the 3 by 3 matrix a person made to
 align it to the Xenium run; its form, scale and rotation), both declared inputs, and the
 operation `measure_if_intensity` for the method's `if-intensity` (per cell, the mean of one
-channel inside the cell's polygon, the lab's pyMFI calculation). No predicate judges it yet.
+channel inside the cell's polygon, the lab's pyMFI calculation). The operation `call_delivered`
+for the method's `call-delivered` (a cell delivered by the image intensity against a percentile
+of its control, and by each transcript probe against a stated floor), and
+`sc.threshold_from_fallback_control` (flag, post): a threshold taken from a control that is not
+the group's own slide and tissue.
 """
 
 from __future__ import annotations

@@ -1063,6 +1063,39 @@ OPERATIONS["measure_if_intensity"] = {
 }
 
 
+# call_delivered (0.10.6; the Xenium method's `call-delivered`): per cell, delivered or not by
+# the protein readout (the image intensity at or above a percentile of the control cells of the
+# same slide and tissue, with a ladder of fallback controls) and by each transcript probe (its
+# count at or above a floor the project states in an input table, never a default).
+OPERATIONS["call_delivered"] = {
+    "type": "object",
+    "properties": {
+        "factor": {
+            "type": "string",
+            "description": "the design factor (a column of the cells) one of whose levels is the control",
+        },
+        "reference": {
+            "type": "string",
+            "description": "the level of `factor` that is the control: cells that received no cargo",
+        },
+        "percentile": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "description": (
+                "the quantile of the control cells' intensity above which a cell is called "
+                "delivered (the lab's 0.95)"
+            ),
+        },
+        "min_control_cells": {
+            **_INT,
+            "description": "a control with fewer measured cells gives no threshold",
+        },
+    },
+    "additionalProperties": False,
+}
+
+
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)
     "qc_summary",  # one report over the QC deliverables of many regions (cross-region QC, 2026-09-18)

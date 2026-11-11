@@ -191,6 +191,18 @@ def _domains(
     return ctx("call_domains", objs, phase="post", ranges=ranges, act=act)
 
 
+def _delivery(groups: list | None = None) -> GateContext:
+    """A call_delivered step after it ran: its `delivery_facts` analysis_summary in the state."""
+    objs = _summary(threshold_groups=groups) if groups is not None else {}
+    return ctx("call_delivered", objs, phase="post", act=action("call_delivered", percentile=0.95))
+
+
+_OWN = {"slide": "S1", "tissue": "liver", "rung": "same_slide_same_tissue",
+        "control_punches": "C-LI", "n_control_cells": 22000}  # fmt: skip
+_BORROWED = {"slide": "S2", "tissue": "liver", "rung": "same_tissue_other_slides",
+             "control_punches": "C-LI", "n_control_cells": 22000}  # fmt: skip
+
+
 def _organ(
     *labels: str | None,
     organ: str | None = "gut",
@@ -229,6 +241,12 @@ def _organ(
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
     # vocabularies scoped by organ (plugin 0.10.0): a liver structure in a gut project
     ("sc.label_outside_organ", lambda: _organ("crypt", "periportal"), lambda: _organ("crypt")),
+    # the delivery step (plugin 0.10.6): a threshold from a control that is not the group's own
+    (
+        "sc.threshold_from_fallback_control",
+        lambda: _delivery([_OWN, _BORROWED]),
+        lambda: _delivery([_OWN]),
+    ),
     # the spatial domain calls (plugin 0.9.0)
     (
         "spatial.domain_is_replicate",
@@ -1544,3 +1562,28 @@ def test_no_permutation_null_coordinate_floor() -> None:
     assert _run(pid, ctx("test_spatial_autocorrelation", {}, n_perms=199, **moran)) is False
     v = registry.get(pid).fn(_nhood(n_perms=10))  # type: ignore[union-attr]
     assert v.fired and "enrichment null" in v.reason and v.evidence["floor"] == 100
+
+
+def test_threshold_from_fallback_control_names_the_groups() -> None:
+    pid = "sc.threshold_from_fallback_control"
+    spec = registry.get(pid)
+    assert spec is not None and spec.version == 1 and str(spec.default).lower().endswith("flag")
+    assert spec.covers_param("call_delivered", "percentile") and spec.in_phase("post")
+    other = {"slide": "S3", "tissue": "lung", "rung": "same_slide_other_tissue",
+             "control_punches": "C-KI", "n_control_cells": 900}  # fmt: skip
+    none = {"slide": "S4", "tissue": "skin", "rung": "none", "control_punches": "",
+            "n_control_cells": 0}  # fmt: skip
+    v = spec.fn(_delivery([_OWN, _BORROWED, other, none]))
+    assert v.fired and "2 of 4 slide-and-tissue group(s)" in (v.reason or "")
+    assert "liver on slide S2 from same_tissue_other_slides (C-LI)" in (v.reason or "")
+    assert [g["rung"] for g in v.evidence["fallback"]] == [
+        "same_tissue_other_slides",
+        "same_slide_other_tissue",
+    ]
+    assert v.evidence["without_control"] == [{"slide": "S4", "tissue": "skin"}]
+    # a group with no control at all is uncalled and listed; by itself it does not fire
+    v = spec.fn(_delivery([_OWN, none]))
+    assert not v.fired and v.evidence["without_control"] == [{"slide": "S4", "tissue": "skin"}]
+    for c in (_delivery(None), _delivery("x")):  # type: ignore[arg-type]
+        v = spec.fn(c)
+        assert not v.fired and v.evidence["judged"] is False
