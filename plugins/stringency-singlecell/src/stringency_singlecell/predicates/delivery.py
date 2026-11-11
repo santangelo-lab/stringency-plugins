@@ -17,12 +17,39 @@ PRIMARY = "same_slide_same_tissue"
 
 
 def _delivery_facts(ctx: GateContext) -> tuple[str | None, dict[str, Any]]:
-    """The latest `analysis_summary` in the state that holds `threshold_groups`."""
+    """The latest `analysis_summary` in the state that holds `n_groups_fallback` (the flat
+    facts, which the extractor carries into the state) or `threshold_groups` (the list, which
+    it drops: only a state built by hand holds it)."""
     found: tuple[str | None, dict[str, Any]] = (None, {})
     for name, dom in objects_of_type(ctx, "analysis_summary"):
-        if "threshold_groups" in dom:
+        if "n_groups_fallback" in dom or "threshold_groups" in dom:
             found = (name, dom)
     return found
+
+
+def _from_flat_facts(name: str, facts: dict[str, Any]) -> Verdict:
+    """The verdict from the flat facts `call-delivered` writes beside `threshold_groups`
+    (`n_groups`, `n_groups_fallback`, `groups_fallback`, `n_groups_without_control`,
+    `groups_without_control`): the extractor keeps numbers, text and booleans only."""
+    try:
+        n = int(facts["n_groups_fallback"])
+    except (TypeError, ValueError):
+        return Verdict(False, None, {"judged": False, "reason": "n_groups_fallback is not a count"})
+    ev = {
+        "object": name,
+        "n_groups": facts.get("n_groups"),
+        "n_fallback": n,
+        "fallback": facts.get("groups_fallback", ""),
+        "without_control": facts.get("groups_without_control", ""),
+    }
+    if n > 0:
+        return Verdict(
+            True,
+            f"{n} of {facts.get('n_groups')} slide-and-tissue group(s) took their threshold from "
+            f"a control that is not their own: {facts.get('groups_fallback', '')}",
+            ev,
+        )
+    return Verdict(False, None, ev)
 
 
 @predicate(
@@ -42,15 +69,22 @@ def threshold_from_fallback_control(ctx: GateContext) -> Verdict:
     person signs off each group thresholded that way (the owner, 2026-11-11: a flag, not a
     block). A group with no control on any rung has no threshold and its cells are uncalled;
     it is listed in the evidence and does not fire by itself. Reads `threshold_groups` of the
-    module's `delivery_facts`: `[{slide, tissue, rung, control_punches, n_control_cells}]`.
-    Without the fact the step is not judged and the evidence says so."""
+    module's `delivery_facts`: `[{slide, tissue, rung, control_punches, n_control_cells}]`;
+    under the engine, whose extractor keeps only flat facts, it reads `n_groups_fallback` and
+    `groups_fallback`, which the module writes beside the list. Without either the step is not
+    judged and the evidence says so."""
     name, facts = _delivery_facts(ctx)
     groups = facts.get("threshold_groups")
+    if name is not None and not isinstance(groups, list) and "n_groups_fallback" in facts:
+        return _from_flat_facts(name, facts)
     if name is None or not isinstance(groups, list):
         return Verdict(
             False,
             None,
-            {"judged": False, "reason": "no analysis_summary holds threshold_groups"},
+            {
+                "judged": False,
+                "reason": "no analysis_summary holds n_groups_fallback or threshold_groups",
+            },
         )
     rows = [g for g in groups if isinstance(g, dict)]
     fallback = [g for g in rows if g.get("rung") not in (PRIMARY, None, "", "none")]

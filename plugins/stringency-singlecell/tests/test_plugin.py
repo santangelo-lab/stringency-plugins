@@ -344,3 +344,37 @@ def test_measure_if_intensity_operation() -> None:
     assert validate({"min_inside": 0}, schema) and validate({"min_inside": 1.1}, schema)
     assert validate({"channel": 2}, schema)
     assert {"if_image", "alignment_matrix"} <= set(p.object_types)
+
+
+def test_delivery_summary_and_test_operations() -> None:
+    """0.10.8: the operations of the Xenium method's `summarize-delivery` and `test-delivery`.
+    The summary's floors are a list of numbers; the test carries the tests of `compose_cells`
+    that apply to a fraction with its own denominator, and the lab's floors as parameters."""
+    from stringency.schemas import validate
+
+    ops = load_plugins(refresh=True)["stringency-singlecell"].operations
+    summary = ops["summarize_delivery"].params_schema
+    assert set(summary["properties"]) == {"factor", "kappa_floors", "min_cells"}
+    assert (
+        validate({"factor": "condition", "kappa_floors": "1,2,4,8", "min_cells": 100}, summary)
+        == []
+    )
+    assert validate({"kappa_floors": "1, 2.5"}, summary) == []
+    assert validate({"kappa_floors": "one,two"}, summary) and validate({"min_cells": 0}, summary)
+    test = ops["test_delivery"].params_schema
+    assert {
+        "factor", "reference", "replicate_unit", "transform", "tests", "min_cells_per_sample",
+        "min_punches_per_arm", "seed", "group_by", "subset", "block",
+    } == set(test["properties"])  # fmt: skip
+    good = {
+        "factor": "condition", "reference": "low", "replicate_unit": "animal",
+        "tests": "propeller,edger_ql,permutation", "min_cells_per_sample": 100,
+        "min_punches_per_arm": 2, "group_by": "cell_type", "subset": "condition in low,high",
+        "block": "batch",
+    }  # fmt: skip
+    assert validate(good, test) == []
+    assert validate({"group_by": ""}, test) == []  # one row of every cell
+    assert validate({"tests": "edger_density"}, test)  # an area is no offset for a fraction
+    assert validate({"min_punches_per_arm": 0}, test) and validate({"colour": "red"}, test)
+    for op in ("summarize_delivery", "test_delivery"):
+        assert ops[op].params_schema.get("additionalProperties") is False, op

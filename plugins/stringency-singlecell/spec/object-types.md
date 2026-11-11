@@ -128,8 +128,11 @@ A method that writes them follows these columns; the first column is the row key
 | `distance_table` | csv | `cell_id` | `punch_id, distance_um, target` (0.10.0: the per-cell distance to the nearest target cell within its punch, signed for a domain target) |
 | `sample_features` | csv | the replicate (`animal` or `punch_id`) | the design columns first, then one column per feature with a prefix per source tool (0.10.0) |
 | `cell_scores` | csv (or csv.gz) | `cell_id` | one numeric column per module scored (0.9.0, `score_pathways`) |
+| `delivery_calls` | csv | `cell_id` (the key of `cell_table`) | `punch_id, slide, tissue`, the control factor's column, `is_control, status, mean_intensity, threshold, threshold_rung, protein_call` (`delivered`, `not_delivered`, `unmeasured`: no whole-cell intensity, `uncalled`: no control on any rung), and per probe `count_<probe>, call_<probe>` (0.10.8, `call_delivered`: one row a QC'd cell of every measured punch) |
+| `delivery_cells` | csv | `cell_id` | the cell table's columns (`punch_id`, the design columns, `cell_type`, ...), `domain`, `protein_call` (`unmeasured` for a cell of a punch with no image) and per probe `call_<probe>, count_<probe>` (0.10.8, `summarize_delivery`: the calls joined to the upstream's cells by id; what `test_delivery` reads) |
+| `delivery_fractions` | csv | the row's group (`replicate`, `punch_id`, `cell_type`, `domain`) | the replicate column, the factor's column, `n_punches, n_cells, n_called, n_delivered, n_unmeasured, n_uncalled, fraction_delivered` (over `n_called`; empty when none was called), and per probe `n_<probe>_counted, n_<probe>_delivered, fraction_<probe>` (0.10.8, `summarize_delivery`) |
 
-Plain types need no extractor, the four of 0.9.0 included: a tool's input of one of these types
+Plain types need no extractor, the three of 0.10.8 and the four of 0.9.0 included: a tool's input of one of these types
 binds the latest artifact of that type, and `topo.input_type_mismatch` compares the strings.
 
 **`pseudobulk_set` from 0.9.0** (the open tools' second round; the Xenium method's

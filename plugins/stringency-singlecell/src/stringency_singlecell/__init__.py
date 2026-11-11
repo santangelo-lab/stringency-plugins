@@ -70,7 +70,16 @@ channel inside the cell's polygon, the lab's pyMFI calculation). The operation `
 for the method's `call-delivered` (a cell delivered by the image intensity against a percentile
 of its control, and by each transcript probe against a stated floor), and
 `sc.threshold_from_fallback_control` (flag, post): a threshold taken from a control that is not
-the group's own slide and tissue.
+the group's own slide and tissue. The operation `summarize_delivery` for the method's
+`summarize-delivery` (the delivered fraction per replicate, punch, cell type and domain, each over
+the cells that could be called, and protein against each probe as Cohen's kappa over count
+floors), and `test_delivery` for its `test-delivery` (the fraction between levels of a factor
+within each group, with the tests of `compose_cells` that apply to a fraction: propeller, edgeR
+quasi-likelihood with the called cells as offset, a label permutation). `test_delivery` joins the
+scope of `de.replication_unit`, `de.covariate_omission`, `de.selection_bias`,
+`test.multiple_comparison` and `test.assumptions_unchecked`; the operation is new, so no earlier
+verdict changes and their versions stay. The plain types `delivery_calls`, `delivery_cells`
+and `delivery_fractions` are in `spec/object-types.md`.
 """
 
 from __future__ import annotations

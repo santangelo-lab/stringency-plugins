@@ -1587,3 +1587,66 @@ def test_threshold_from_fallback_control_names_the_groups() -> None:
     for c in (_delivery(None), _delivery("x")):  # type: ignore[arg-type]
         v = spec.fn(c)
         assert not v.fired and v.evidence["judged"] is False
+
+
+def test_the_downstream_predicates_judge_the_delivery_test() -> None:
+    """0.10.8: `test_delivery` (the Xenium method's test of the delivered fraction between
+    levels) is in the downstream predicates' scope, under the same parameter names."""
+    for pid in ("de.replication_unit", "de.covariate_omission", "test.assumptions_unchecked"):
+        spec = registry.get(pid)
+        assert spec is not None and "test_delivery" in spec.scope, pid
+    assert _run("de.replication_unit", _de(operation="test_delivery", replicate_unit="punch"))
+    assert not _run("de.replication_unit", _de(operation="test_delivery", replicate_unit="animal"))
+    assert _run(
+        "test.assumptions_unchecked", _de(operation="test_delivery", min_cells_per_sample=0)
+    )
+    assert not _run(
+        "de.covariate_omission", _de(operation="test_delivery", block="batch")
+    )  # the declared batch, resolved by the tool
+
+
+def test_threshold_from_fallback_control_reads_the_flat_facts() -> None:
+    """Under the engine the analysis_summary extractor keeps only numbers, text and booleans, so
+    the predicate reads the flat facts `call-delivered` writes beside the list (found by the
+    Xenium method's first engine run of xenium-delivery: the list never reached the state)."""
+    from stringency_singlecell.tools.extract_analysis_summary import main as extract
+
+    spec = registry.get("sc.threshold_from_fallback_control")
+    assert spec is not None
+    flat = {
+        "n_groups": 3,
+        "n_groups_fallback": 1,
+        "groups_fallback": "liver on slide S3 from same_tissue_other_slides (c1;c2, 1352 cells)",
+        "n_groups_without_control": 0,
+        "groups_without_control": "",
+    }
+    v = spec.fn(_summary_ctx(flat))
+    assert v.fired and "1 of 3 slide-and-tissue group(s)" in (v.reason or "")
+    assert "liver on slide S3" in (v.reason or "") and v.evidence["n_fallback"] == 1
+    v = spec.fn(_summary_ctx({**flat, "n_groups_fallback": 0, "groups_fallback": ""}))
+    assert not v.fired and v.evidence["n_groups"] == 3
+    v = spec.fn(_summary_ctx({**flat, "n_groups_fallback": "many"}))
+    assert not v.fired and v.evidence["judged"] is False
+    # the extractor keeps the flat facts and drops the list, which is why both are written
+    import io
+    import json
+    import tempfile
+    from contextlib import redirect_stdout
+
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        json.dump({**flat, "threshold_groups": [{"slide": "S3"}]}, fh)
+    out = io.StringIO()
+    with redirect_stdout(out):
+        assert extract(["x", fh.name, "{}"]) == 0
+    domain = json.loads(out.getvalue())["domain"]
+    assert domain["n_groups_fallback"] == 1 and "threshold_groups" not in domain
+
+
+def _summary_ctx(facts: dict) -> GateContext:
+    """A call_delivered step after it ran, its delivery_facts as the extractor leaves them."""
+    return ctx(
+        "call_delivered",
+        _summary(**facts),
+        phase="post",
+        act=action("call_delivered", percentile=0.95),
+    )
