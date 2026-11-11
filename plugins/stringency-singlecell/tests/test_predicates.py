@@ -59,7 +59,7 @@ def _seurat(
         else None
     )
     return {
-        "extractor": "sc.seurat_object@1",
+        "extractor": "sc.seurat_object@2",
         "type": "seurat_object",
         "n_obs": n_obs,
         "n_var": n_var,

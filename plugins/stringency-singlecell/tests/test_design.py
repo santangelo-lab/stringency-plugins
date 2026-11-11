@@ -58,6 +58,22 @@ def test_design_schema_rejects(mutate, fragment: str) -> None:  # type: ignore[n
     assert problems and any(fragment in p for p in problems), problems
 
 
+def test_primary_factor_is_optional_and_a_name() -> None:
+    """0.10.5: a design may name the factor a study is laid out by; the engine's envelope keeps
+    the key, so a module reads it from the job's design."""
+    import copy
+
+    d = copy.deepcopy(DESIGN)
+    assert "primary_factor" not in d and validate(d, DESIGN_SCHEMA) == []
+    d["primary_factor"] = "timepoint_h"
+    assert validate(d, DESIGN_SCHEMA) == []
+    assert Design.model_validate(d).model_dump()["primary_factor"] == "timepoint_h"
+    d["primary_factor"] = ""
+    assert validate(d, DESIGN_SCHEMA)
+    d["primary_factor"] = ["timepoint_h"]
+    assert validate(d, DESIGN_SCHEMA)
+
+
 def test_single_level_condition_factor_is_allowed() -> None:
     assert DESIGN["factors"]["condition"]["levels"] == ["CLP"]
     assert validate(DESIGN, DESIGN_SCHEMA) == []
@@ -113,8 +129,9 @@ def test_plugin_surface() -> None:
     }
     for ot in p.object_types.values():
         assert ot.extractor in p.tools and p.tools[ot.extractor].script.exists()
-        # the anndata extractor is at version 2 from 0.10.4 (`fields.columns`); the rest at 1
-        version = 2 if ot.name == "anndata" else 1
+        # the anndata extractor is at version 2 from 0.10.4 and the Seurat one from 0.10.5
+        # (`fields.columns`); the rest at 1
+        version = 2 if ot.name in ("anndata", "seurat_object") else 1
         assert ot.extractor_id == f"sc.{ot.name}@{version}"
     assert p.defaults["min_cells_per_punch"] == 500
     assert set(p.predicates()) == {

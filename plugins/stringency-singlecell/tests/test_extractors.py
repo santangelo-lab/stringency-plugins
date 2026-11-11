@@ -386,6 +386,7 @@ library(SeuratObject)
 m <- matrix(1:60, nrow = 6, dimnames = list(paste0("g", 1:6), paste0("c", 1:10)))
 obj <- CreateSeuratObject(counts = m, assay = "Xenium")
 obj$timepoint_h <- rep(c("6", "24"), each = 5)
+obj[["Xenium"]] <- AddMetaData(obj[["Xenium"]], metadata = data.frame(symbol = paste0("Gene", 1:6), row.names = rownames(obj)))
 obj@misc$stringency <- list(normalisation = list(method = "logarea"))
 saveRDS(obj, commandArgs(trailingOnly = TRUE)[1])
 """
@@ -408,9 +409,20 @@ def test_extract_seurat_envelope(tmp_path: Path, design_json: Path) -> None:
     )
     assert res.returncode == 0, res.stderr
     env = json.loads(res.stdout)
-    assert env["extractor"] == "sc.seurat_object@1" and env["type"] == "seurat_object"
+    assert env["extractor"] == "sc.seurat_object@2" and env["type"] == "seurat_object"
     assert env["n_obs"] == 10 and env["n_var"] == 6
-    assert set(env["fields"]) == {"obs", "obsm", "layers", "uns_flags"}
+    assert set(env["fields"]) == {
+        "obs",
+        "columns",
+        "feature_columns",
+        "obsm",
+        "layers",
+        "uns_flags",
+    }
+    # version 2 (0.10.5, L186): the columns where the engine reads them, as the anndata extractor
+    assert env["fields"]["columns"] == env["fields"]["obs"]
+    assert env["fields"]["columns"]["timepoint_h"]["levels"] == ["24", "6"]
+    assert env["fields"]["feature_columns"]["symbol"]["n_unique"] == 6
     assert "timepoint_h" in env["fields"]["obs"] and "counts" in env["fields"]["layers"]
     assert env["fields"]["uns_flags"]["normalisation"]["method"] == "logarea"
     assert env["counts_per_group"]["timepoint_h"]["6"]["observation"] == 5
