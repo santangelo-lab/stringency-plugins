@@ -1,0 +1,279 @@
+# cell_types_mouse@3: cell_types_mouse@2 with the labels the owner approved organ by organ
+# (2026-11-11) for kidney, skin, heart, lymph node, large intestine, the female reproductive tract
+# and brain, and `neuron` for every organ but gut and brain. It only adds: every @2 label is here
+# and gains organs alone. @2 and @1 are kept unchanged for the projects that pinned them.
+# Written by the Xenium method's tools/build_vocabulary_tables.py from its
+# modules/annotate-clusters/cell_types_mouse.csv, which carries the markers and notes; do not
+# edit by hand. A theca cell and a luteal cell are one label, so its term names both.
+name: cell_types_mouse
+version: 3
+labels:
+  - hepatocyte
+  - cholangiocyte
+  - hepatic_stellate_cell
+  - kupffer_cell
+  - enterocyte
+  - goblet_cell
+  - paneth_cell
+  - enteroendocrine_cell
+  - tuft_cell
+  - intestinal_stem_cell
+  - transit_amplifying_cell
+  - interstitial_cell_of_cajal
+  - alveolar_type1
+  - alveolar_type2
+  - club_cell
+  - ciliated_cell
+  - basal_cell
+  - pulmonary_neuroendocrine_cell
+  - mesothelial_cell
+  - endothelial
+  - lymphatic_endothelial
+  - fibroblast
+  - smooth_muscle
+  - pericyte
+  - enteric_glia
+  - enteric_neuron
+  - schwann_cell
+  - cardiomyocyte
+  - adipocyte
+  - stromal_reticular_cell
+  - alveolar_macrophage
+  - red_pulp_macrophage
+  - macrophage
+  - monocyte
+  - neutrophil
+  - eosinophil
+  - basophil
+  - dendritic_cell
+  - plasmacytoid_dc
+  - mast_cell
+  - t_cell
+  - nk_cell
+  - ilc
+  - b_cell
+  - germinal_center_b_cell
+  - plasma_cell
+  - erythroid
+  - megakaryocyte
+  - hematopoietic_progenitor
+  - proximal_tubule_cell
+  - thin_descending_limb_cell
+  - thin_ascending_limb_cell
+  - thick_ascending_limb_cell
+  - macula_densa_cell
+  - distal_convoluted_tubule_cell
+  - connecting_tubule_cell
+  - collecting_duct_principal_cell
+  - collecting_duct_intercalated_cell
+  - podocyte
+  - parietal_epithelial_cell
+  - mesangial_cell
+  - urothelial_cell
+  - basal_keratinocyte
+  - suprabasal_keratinocyte
+  - hair_follicle_keratinocyte
+  - sebocyte
+  - dermal_papilla_cell
+  - melanocyte
+  - skeletal_muscle_fiber
+  - endocardial_cell
+  - high_endothelial_venule_cell
+  - granulosa_cell
+  - theca_luteal_cell
+  - oocyte
+  - uterine_epithelial_cell
+  - endometrial_stromal_cell
+  - oviduct_secretory_cell
+  - glutamatergic_neuron
+  - gabaergic_neuron
+  - dopaminergic_neuron
+  - astrocyte
+  - oligodendrocyte
+  - oligodendrocyte_precursor_cell
+  - microglia
+  - ependymal_cell
+  - choroid_plexus_epithelial_cell
+  - neuron
+  - mixed_doublet
+  - low_quality
+  - unknown
+terms:
+  hepatocyte:                        {cl_id: "CL:0000182", name: "hepatocyte"}
+  cholangiocyte:                     {cl_id: "CL:1000488", name: "cholangiocyte"}
+  hepatic_stellate_cell:             {cl_id: "CL:0000632", name: "hepatic stellate cell"}
+  kupffer_cell:                      {cl_id: "CL:0000091", name: "Kupffer cell"}
+  enterocyte:                        {cl_id: "CL:0000584", name: "enterocyte"}
+  goblet_cell:                       {cl_id: "CL:0000160", name: "goblet cell"}
+  paneth_cell:                       {cl_id: "CL:0000510", name: "paneth cell"}
+  enteroendocrine_cell:              {cl_id: "CL:0000164", name: "enteroendocrine cell"}
+  tuft_cell:                         {cl_id: "CL:0002204", name: "tuft cell"}
+  intestinal_stem_cell:              {cl_id: "CL:0002250", name: "intestinal crypt stem cell"}
+  transit_amplifying_cell:           {cl_id: "CL:0009010", name: "transit amplifying cell"}
+  interstitial_cell_of_cajal:        {cl_id: "CL:0002088", name: "interstitial cell of Cajal"}
+  alveolar_type1:                    {cl_id: "CL:0002062", name: "pulmonary alveolar type 1 cell"}
+  alveolar_type2:                    {cl_id: "CL:0002063", name: "pulmonary alveolar type 2 cell"}
+  club_cell:                         {cl_id: "CL:0000158", name: "club cell"}
+  ciliated_cell:                     {cl_id: "CL:0005012", name: "multiciliated epithelial cell"}
+  basal_cell:                        {cl_id: "CL:0000646", name: "basal cell"}
+  pulmonary_neuroendocrine_cell:     {cl_id: "CL:1000223", name: "pulmonary neuroendocrine cell"}
+  mesothelial_cell:                  {cl_id: "CL:0000077", name: "mesothelial cell"}
+  endothelial:                       {cl_id: "CL:0000115", name: "endothelial cell"}
+  lymphatic_endothelial:             {cl_id: "CL:0002138", name: "endothelial cell of lymphatic vessel"}
+  fibroblast:                        {cl_id: "CL:0000057", name: "fibroblast"}
+  smooth_muscle:                     {cl_id: "CL:0000192", name: "smooth muscle cell"}
+  pericyte:                          {cl_id: "CL:0000669", name: "pericyte"}
+  enteric_glia:                      {cl_id: "CL:4040002", name: "enteroglial cell"}
+  enteric_neuron:                    {cl_id: "CL:0007011", name: "enteric neuron"}
+  schwann_cell:                      {cl_id: "CL:0002573", name: "Schwann cell"}
+  cardiomyocyte:                     {cl_id: "CL:0000746", name: "cardiac muscle cell"}
+  adipocyte:                         {cl_id: "CL:0000136", name: "adipocyte"}
+  stromal_reticular_cell:            {cl_id: "CL:0000432", name: "reticular cell"}
+  alveolar_macrophage:               {cl_id: "CL:0000583", name: "alveolar macrophage"}
+  red_pulp_macrophage:               {cl_id: "CL:0000874", name: "splenic red pulp macrophage"}
+  macrophage:                        {cl_id: "CL:0000235", name: "macrophage"}
+  monocyte:                          {cl_id: "CL:0000576", name: "monocyte"}
+  neutrophil:                        {cl_id: "CL:0000775", name: "neutrophil"}
+  eosinophil:                        {cl_id: "CL:0000771", name: "eosinophil"}
+  basophil:                          {cl_id: "CL:0000767", name: "basophil"}
+  dendritic_cell:                    {cl_id: "CL:0000451", name: "dendritic cell"}
+  plasmacytoid_dc:                   {cl_id: "CL:0000784", name: "plasmacytoid dendritic cell"}
+  mast_cell:                         {cl_id: "CL:0000097", name: "mast cell"}
+  t_cell:                            {cl_id: "CL:0000084", name: "T cell"}
+  nk_cell:                           {cl_id: "CL:0000623", name: "natural killer cell"}
+  ilc:                               {cl_id: "CL:0001065", name: "innate lymphoid cell"}
+  b_cell:                            {cl_id: "CL:0000236", name: "B cell"}
+  germinal_center_b_cell:            {cl_id: "CL:0000844", name: "germinal center B cell"}
+  plasma_cell:                       {cl_id: "CL:0000786", name: "plasma cell"}
+  erythroid:                         {cl_id: "CL:0000764", name: "erythroid lineage cell"}
+  megakaryocyte:                     {cl_id: "CL:0000556", name: "megakaryocyte"}
+  hematopoietic_progenitor:          {cl_id: "CL:0008001", name: "hematopoietic precursor cell"}
+  proximal_tubule_cell:              {cl_id: "CL:0002306", name: "epithelial cell of proximal tubule"}
+  thin_descending_limb_cell:         {cl_id: "CL:1001111", name: "kidney loop of Henle thin descending limb epithelial cell"}
+  thin_ascending_limb_cell:          {cl_id: "CL:1001107", name: "kidney loop of Henle thin ascending limb epithelial cell"}
+  thick_ascending_limb_cell:         {cl_id: "CL:1001106", name: "kidney loop of Henle thick ascending limb epithelial cell"}
+  macula_densa_cell:                 {cl_id: "CL:1000850", name: "macula densa epithelial cell"}
+  distal_convoluted_tubule_cell:     {cl_id: "CL:1000849", name: "kidney distal convoluted tubule epithelial cell"}
+  connecting_tubule_cell:            {cl_id: "CL:1000768", name: "kidney connecting tubule epithelial cell"}
+  collecting_duct_principal_cell:    {cl_id: "CL:1001431", name: "kidney collecting duct principal cell"}
+  collecting_duct_intercalated_cell: {cl_id: "CL:1001432", name: "kidney collecting duct intercalated cell"}
+  podocyte:                          {cl_id: "CL:0000653", name: "podocyte"}
+  parietal_epithelial_cell:          {cl_id: "CL:1000452", name: "parietal epithelial cell"}
+  mesangial_cell:                    {cl_id: "CL:0000650", name: "mesangial cell"}
+  urothelial_cell:                   {cl_id: "CL:0000731", name: "urothelial cell"}
+  basal_keratinocyte:                {cl_id: "CL:0002187", name: "basal cell of epidermis"}
+  suprabasal_keratinocyte:           {cl_id: "CL:4033013", name: "suprabasal keratinocyte"}
+  hair_follicle_keratinocyte:        {cl_id: "CL:2000092", name: "hair follicular keratinocyte"}
+  sebocyte:                          {cl_id: "CL:0002140", name: "skin sebocyte"}
+  dermal_papilla_cell:               {cl_id: "CL:0000346", name: "hair follicle dermal papilla cell"}
+  melanocyte:                        {cl_id: "CL:0000148", name: "melanocyte"}
+  skeletal_muscle_fiber:             {cl_id: "CL:0008002", name: "skeletal muscle fiber"}
+  endocardial_cell:                  {cl_id: "CL:0002350", name: "endocardial cell"}
+  high_endothelial_venule_cell:      {cl_id: "CL:0002652", name: "endothelial cell of high endothelial venule"}
+  granulosa_cell:                    {cl_id: "CL:0000501", name: "granulosa cell"}
+  theca_luteal_cell:                 {cl_id: "CL:0000503;CL:0000175", name: "theca cell; luteal cell"}
+  oocyte:                            {cl_id: "CL:0000023", name: "oocyte"}
+  uterine_epithelial_cell:           {cl_id: "CL:0002149", name: "epithelial cell of uterus"}
+  endometrial_stromal_cell:          {cl_id: "CL:0002255", name: "stromal cell of endometrium"}
+  oviduct_secretory_cell:            {cl_id: "CL:1001591", name: "oviduct secretory cell"}
+  glutamatergic_neuron:              {cl_id: "CL:0000679", name: "glutamatergic neuron"}
+  gabaergic_neuron:                  {cl_id: "CL:0000617", name: "GABAergic neuron"}
+  dopaminergic_neuron:               {cl_id: "CL:0000700", name: "dopaminergic neuron"}
+  astrocyte:                         {cl_id: "CL:0000127", name: "astrocyte"}
+  oligodendrocyte:                   {cl_id: "CL:0000128", name: "oligodendrocyte"}
+  oligodendrocyte_precursor_cell:    {cl_id: "CL:0002453", name: "oligodendrocyte precursor cell"}
+  microglia:                         {cl_id: "CL:0000129", name: "microglial cell"}
+  ependymal_cell:                    {cl_id: "CL:0000065", name: "ependymal cell"}
+  choroid_plexus_epithelial_cell:    {cl_id: "CL:0000706", name: "choroid plexus epithelial cell"}
+  neuron:                            {cl_id: "CL:0000540", name: "neuron"}
+organs:
+  hepatocyte:                        [liver]
+  cholangiocyte:                     [liver]
+  hepatic_stellate_cell:             [liver]
+  kupffer_cell:                      [liver]
+  enterocyte:                        [small_intestine, large_intestine]
+  goblet_cell:                       [small_intestine, large_intestine]
+  paneth_cell:                       [small_intestine]
+  enteroendocrine_cell:              [small_intestine, large_intestine]
+  tuft_cell:                         [small_intestine, large_intestine]
+  intestinal_stem_cell:              [small_intestine, large_intestine]
+  transit_amplifying_cell:           [small_intestine, large_intestine]
+  interstitial_cell_of_cajal:        [small_intestine, large_intestine]
+  alveolar_type1:                    [lung]
+  alveolar_type2:                    [lung]
+  club_cell:                         [lung]
+  ciliated_cell:                     [lung, female_reproductive_tract]
+  basal_cell:                        [lung]
+  pulmonary_neuroendocrine_cell:     [lung]
+  mesothelial_cell:                  [liver, lung, small_intestine, large_intestine, spleen, female_reproductive_tract]
+  endothelial:                       [any]
+  lymphatic_endothelial:             [any]
+  fibroblast:                        [any]
+  smooth_muscle:                     [any]
+  pericyte:                          [any]
+  enteric_glia:                      [small_intestine, large_intestine]
+  enteric_neuron:                    [small_intestine, large_intestine]
+  schwann_cell:                      [liver, spleen, lung]
+  cardiomyocyte:                     [lung, heart]
+  adipocyte:                         [any]
+  stromal_reticular_cell:            [small_intestine, large_intestine, spleen, lymph_node]
+  alveolar_macrophage:               [lung]
+  red_pulp_macrophage:               [spleen]
+  macrophage:                        [any]
+  monocyte:                          [any]
+  neutrophil:                        [any]
+  eosinophil:                        [any]
+  basophil:                          [any]
+  dendritic_cell:                    [any]
+  plasmacytoid_dc:                   [any]
+  mast_cell:                         [any]
+  t_cell:                            [any]
+  nk_cell:                           [any]
+  ilc:                               [any]
+  b_cell:                            [any]
+  germinal_center_b_cell:            [small_intestine, large_intestine, spleen, lymph_node]
+  plasma_cell:                       [any]
+  erythroid:                         [spleen, liver]
+  megakaryocyte:                     [spleen, liver]
+  hematopoietic_progenitor:          [spleen, liver]
+  proximal_tubule_cell:              [kidney]
+  thin_descending_limb_cell:         [kidney]
+  thin_ascending_limb_cell:          [kidney]
+  thick_ascending_limb_cell:         [kidney]
+  macula_densa_cell:                 [kidney]
+  distal_convoluted_tubule_cell:     [kidney]
+  connecting_tubule_cell:            [kidney]
+  collecting_duct_principal_cell:    [kidney]
+  collecting_duct_intercalated_cell: [kidney]
+  podocyte:                          [kidney]
+  parietal_epithelial_cell:          [kidney]
+  mesangial_cell:                    [kidney]
+  urothelial_cell:                   [kidney]
+  basal_keratinocyte:                [skin]
+  suprabasal_keratinocyte:           [skin]
+  hair_follicle_keratinocyte:        [skin]
+  sebocyte:                          [skin]
+  dermal_papilla_cell:               [skin]
+  melanocyte:                        [skin]
+  skeletal_muscle_fiber:             [skin]
+  endocardial_cell:                  [heart]
+  high_endothelial_venule_cell:      [lymph_node]
+  granulosa_cell:                    [female_reproductive_tract]
+  theca_luteal_cell:                 [female_reproductive_tract]
+  oocyte:                            [female_reproductive_tract]
+  uterine_epithelial_cell:           [female_reproductive_tract]
+  endometrial_stromal_cell:          [female_reproductive_tract]
+  oviduct_secretory_cell:            [female_reproductive_tract]
+  glutamatergic_neuron:              [brain]
+  gabaergic_neuron:                  [brain]
+  dopaminergic_neuron:               [brain]
+  astrocyte:                         [brain]
+  oligodendrocyte:                   [brain]
+  oligodendrocyte_precursor_cell:    [brain]
+  microglia:                         [brain]
+  ependymal_cell:                    [brain]
+  choroid_plexus_epithelial_cell:    [brain]
+  neuron:                            [liver, lung, spleen, kidney, heart, skin, lymph_node, female_reproductive_tract]
+  mixed_doublet:                     [any]
+  low_quality:                       [any]
+  unknown:                           [any]

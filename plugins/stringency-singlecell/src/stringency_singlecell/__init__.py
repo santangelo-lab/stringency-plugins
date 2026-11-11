@@ -50,6 +50,16 @@ of a Seurat object (`text: column`). The design schema takes an optional `primar
 name of the factor a study is laid out by (a time course's time point), so a method's steps
 read it from the design in place of a factor name fixed in the pipeline (the Xenium method's
 X3; the owner's choice, 2026-11-11).
+
+0.10.7 (2026-11-11; 0.10.6 is the delivery step's types and operations, on its own branch): the
+vocabularies of seven more organs for the Xenium method. `cell_types_mouse@3` is @2 with 38
+labels the owner approved organ by organ for kidney, skin, heart, lymph node, large intestine,
+the female reproductive tract and brain (names from established references: CELLxGENE,
+CellGuide, the Cell Ontology), and organs added to seventeen labels @2 had.
+`tissue_structures_mouse@2` is @1 with those organs' structures, `surface_epithelium` for the
+large intestine, and large_intestine out of `villus`. Both are written by the method's
+`tools/build_vocabulary_tables.py` from its tables. `ORGANS` gains `lymph_node` and
+`female_reproductive_tract`, read also as `ln` and `frt`. The older versions are unchanged.
 """
 
 from __future__ import annotations
@@ -63,7 +73,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.5"
+VERSION = "0.10.7"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -79,6 +89,8 @@ ORGANS = (
     "heart",
     "skin",
     "brain",
+    "lymph_node",  # 0.10.7
+    "female_reproductive_tract",  # 0.10.7
 )
 
 
