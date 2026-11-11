@@ -111,3 +111,56 @@ def threshold_from_fallback_control(ctx: GateContext) -> Verdict:
             ev,
         )
     return Verdict(False, None, ev)
+
+
+@predicate(
+    id="sc.delivery_test_on_threshold_level",
+    version=1,
+    scope=["test_delivery"],
+    phase="post",
+    default=Disposition.FLAG,
+    covers=["test_delivery.reference", "test_delivery.subset"],
+    source=SOURCE,
+)
+def delivery_test_on_threshold_level(ctx: GateContext) -> Verdict:
+    """A test of the delivered fraction that compares the level whose cells set the thresholds
+    (the control the image's percentile was taken from). That level's fraction is held near
+    1 - percentile by construction, 5 percent at 0.95, and its spread between replicates is
+    understated, so a contrast with it is anti-conservative: a person signs it off or chooses a
+    reference and a subset that leave it out (the Xenium method's review of its X6 pull
+    request, 2026-11-11). Reads the flat facts of the module's `test_facts`
+    `analysis_summary`: `n_contrasts_with_threshold_level`, `contrasts_with_threshold_level`,
+    `threshold_levels`. Without them the step is not judged and the evidence says so."""
+    found: tuple[str | None, dict[str, Any]] = (None, {})
+    for obj_name, dom in objects_of_type(ctx, "analysis_summary"):
+        if "n_contrasts_with_threshold_level" in dom:
+            found = (obj_name, dom)
+    name, facts = found
+    if name is None:
+        return Verdict(
+            False,
+            None,
+            {
+                "judged": False,
+                "reason": "no analysis_summary holds n_contrasts_with_threshold_level",
+            },
+        )
+    try:
+        n = int(facts["n_contrasts_with_threshold_level"])
+    except (TypeError, ValueError):
+        return Verdict(False, None, {"judged": False, "reason": "the count is not a number"})
+    ev = {
+        "object": name,
+        "n_contrasts": n,
+        "contrasts": facts.get("contrasts_with_threshold_level", ""),
+        "threshold_levels": facts.get("threshold_levels", ""),
+    }
+    if n > 0:
+        return Verdict(
+            True,
+            f"{n} contrast(s) compare the level that set the thresholds "
+            f"({facts.get('threshold_levels', '')}): {facts.get('contrasts_with_threshold_level', '')}; "
+            "its delivered fraction is held near 1 - percentile and its spread understated",
+            ev,
+        )
+    return Verdict(False, None, ev)

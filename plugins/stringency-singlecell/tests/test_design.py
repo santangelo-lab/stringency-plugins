@@ -167,6 +167,7 @@ def test_plugin_surface() -> None:
         "sc.label_outside_organ",
         # the delivery step (0.10.8)
         "sc.threshold_from_fallback_control",
+        "sc.delivery_test_on_threshold_level",
     }
     assert "assess_batch" in p.operations and p.vocabularies["batch_route@1"] == (
         "proceed_uncorrected",

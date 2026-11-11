@@ -70,7 +70,9 @@ channel inside the cell's polygon, the lab's pyMFI calculation). The operation `
 for the method's `call-delivered` (a cell delivered by the image intensity against a percentile
 of its control, and by each transcript probe against a stated floor), and
 `sc.threshold_from_fallback_control` (flag, post): a threshold taken from a control that is not
-the group's own slide and tissue. The operation `summarize_delivery` for the method's
+the group's own slide and tissue, read from the flat facts the module writes (the
+`analysis_summary` extractor drops lists). `sc.delivery_test_on_threshold_level` (flag, post): a
+test of the delivered fraction that compares the level whose cells set the thresholds. The operation `summarize_delivery` for the method's
 `summarize-delivery` (the delivered fraction per replicate, punch, cell type and domain, each over
 the cells that could be called, and protein against each probe as Cohen's kappa over count
 floors), and `test_delivery` for its `test-delivery` (the fraction between levels of a factor

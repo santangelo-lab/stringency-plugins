@@ -197,6 +197,16 @@ def _delivery(groups: list | None = None) -> GateContext:
     return ctx("call_delivered", objs, phase="post", act=action("call_delivered", percentile=0.95))
 
 
+def _test_facts(n: int, contrasts: str) -> GateContext:
+    """A test_delivery step after it ran: its `test_facts` analysis_summary in the state."""
+    facts = {
+        "n_contrasts_with_threshold_level": n,
+        "contrasts_with_threshold_level": contrasts,
+        "threshold_levels": "control (100% of its called cells set the thresholds)" if n else "",
+    }
+    return ctx("test_delivery", _summary(**facts), phase="post", act=action("test_delivery"))
+
+
 _OWN = {"slide": "S1", "tissue": "liver", "rung": "same_slide_same_tissue",
         "control_punches": "C-LI", "n_control_cells": 22000}  # fmt: skip
 _BORROWED = {"slide": "S2", "tissue": "liver", "rung": "same_tissue_other_slides",
@@ -246,6 +256,12 @@ CASES: list[tuple[str, CtxFn, CtxFn]] = [
         "sc.threshold_from_fallback_control",
         lambda: _delivery([_OWN, _BORROWED]),
         lambda: _delivery([_OWN]),
+    ),
+    # a delivery test that compares the level whose cells set the thresholds (plugin 0.10.8)
+    (
+        "sc.delivery_test_on_threshold_level",
+        lambda: _test_facts(1, "control_vs_low"),
+        lambda: _test_facts(0, ""),
     ),
     # the spatial domain calls (plugin 0.9.0)
     (
@@ -1650,3 +1666,14 @@ def _summary_ctx(facts: dict) -> GateContext:
         phase="post",
         act=action("call_delivered", percentile=0.95),
     )
+
+
+def test_delivery_test_on_threshold_level_names_the_contrasts() -> None:
+    spec = registry.get("sc.delivery_test_on_threshold_level")
+    assert spec is not None and str(spec.default).lower().endswith("flag")
+    assert spec.in_phase("post") and spec.covers_param("test_delivery", "reference")
+    v = spec.fn(_test_facts(2, "control_vs_low, high_vs_control"))
+    assert v.fired and "2 contrast(s)" in (v.reason or "") and "control_vs_low" in (v.reason or "")
+    assert not spec.fn(_test_facts(0, "")).fired
+    v = spec.fn(ctx("test_delivery", {}, phase="post", act=action("test_delivery")))
+    assert not v.fired and v.evidence["judged"] is False
