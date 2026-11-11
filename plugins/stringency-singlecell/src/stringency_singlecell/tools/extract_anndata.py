@@ -10,7 +10,9 @@ counts_per_group computed from the design's factors and units, and a domain bloc
 Version 2 (plugin 0.10.4): the obs columns are also written as `fields.columns`, the key the
 engine reads for an object's columns (`init.column_missing`; a pipeline's names, engine
 0.2.42), and a text column of fifty values or fewer lists its values as a categorical does.
-`fields.obs` stays, since the plugin's own predicates read it.
+`fields.obs` stays, since the plugin's own predicates read it. The var columns are written
+as `fields.feature_columns` (dtype and n_unique each), which a name of kind `feature_column`
+is checked against (a gene-symbol column).
 """
 
 from __future__ import annotations
@@ -73,6 +75,10 @@ def main(argv):  # type: ignore[no-untyped-def]
         "fields": {
             "obs": fields,
             "columns": fields,
+            "feature_columns": {
+                c: {"dtype": str(adata.var[c].dtype), "n_unique": int(adata.var[c].nunique())}
+                for c in adata.var.columns
+            },
             "obsm": sorted(adata.obsm.keys()),
             "layers": sorted(adata.layers.keys()),
             "uns_flags": flags,

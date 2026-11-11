@@ -32,7 +32,11 @@ def test_obs_columns_are_written_where_the_engine_reads_them(tmp_path: Path) -> 
         index=[f"c{i}" for i in range(n)],
     )
     path = tmp_path / "t.h5ad"
-    ad.AnnData(X=np.ones((n, 5), dtype="float32"), obs=obs).write_h5ad(path)
+    var = pd.DataFrame(
+        {"gene_symbols": [f"G{i}" for i in range(5)], "highly_variable": [True] * 5},
+        index=[f"ENSG{i}" for i in range(5)],
+    )
+    ad.AnnData(X=np.ones((n, 5), dtype="float32"), obs=obs, var=var).write_h5ad(path)
     design = tmp_path / "design.json"
     design.write_text(json.dumps({"factors": {}, "units": {}}))
     r = subprocess.run(
@@ -49,3 +53,6 @@ def test_obs_columns_are_written_where_the_engine_reads_them(tmp_path: Path) -> 
     assert cols["condition"]["levels"] == ["ctrl", "stim"]
     assert cols["cell_type"]["levels"] == ["B", "Mono", "T"]
     assert "levels" not in cols["barcode"] and "levels" not in cols["n_counts"]
+    feats = out["fields"]["feature_columns"]
+    assert sorted(feats) == ["gene_symbols", "highly_variable"]
+    assert feats["gene_symbols"]["n_unique"] == 5
