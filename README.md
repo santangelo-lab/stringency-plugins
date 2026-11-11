@@ -4,12 +4,13 @@ Domain plugins for the [stringency](https://github.com/santangelo-lab/stringency
 package per subdirectory under `plugins/`, one uv workspace, one tag for all plugins. A plugin
 teaches the engine a domain's vocabulary (object types and extractors, the design schema,
 predicates, controlled vocabularies, phrasing); it runs no analysis. Analyses live in method
-repositories (`stringency-xenium-method`, `stringency-plasmidsaurusRNAseq-method`), which depend
-on these plugins.
+repositories, which depend on these plugins: `stringency-xenium-method` and
+`stringency-scrnaseq-scanpy-method` need `stringency-singlecell`;
+`stringency-plasmidsaurusRNAseq-method` (bulk RNA-seq) names no plugin yet.
 
 | plugin | domain | status |
 |---|---|---|
-| `plugins/stringency-singlecell` | single-cell and spatial (Xenium) | 0.5.1 (2026-10-14, needs engine 0.2.19; 0.5.0 of 2026-10-08 ran Lyons v2): the object types, extractors, design schema, predicates, vocabularies (`punch_qc_verdict@2`, `batch_route@1`, `cell_types_mouse@2`) and typed operations that `stringency-xenium-method`'s `xenium-qc-tma` and `xenium-upstream` pipelines use; see its README |
+| `plugins/stringency-singlecell` | single-cell and spatial (Xenium), droplet scRNA-seq | 0.10.3 (2026-10-28; its package floor is engine 0.2.19, its tests run against the engine tag pinned under `tool.uv.sources`): the object types, extractors, design schema, predicates, vocabularies and typed operations used by `stringency-xenium-method` (QC, upstream, the spatial layers and the open-mode tools) and by `stringency-scrnaseq-scanpy-method` (the scRNA-seq QC, PCA, normalisation and pseudobulk predicates). The version history is in its README; this row is updated at each tag |
 | `plugins/stringency-bulkrna` | bulk RNA-seq | not started (engine roadmap Lane B, dormant) |
 
 ## Develop
@@ -38,4 +39,4 @@ scripts/install.sh --prefix <prefix> \
   --plugin git+https://github.com/santangelo-lab/stringency-plugins@<tag>#subdirectory=plugins/stringency-singlecell
 ```
 
-Repository layout decided 2026-09-17 (engine `spec/archive/roadmap-2026-09.md`, Lane D item 2). A CI workflow, a `requires` check against the engine and a version test are scheduled in the engine's `spec/plans/roadmap-2026-10.md` (W3).
+Repository layout decided 2026-09-17 (engine `spec/archive/roadmap-2026-09.md`, Lane D item 2). The CI workflow above and the version test (`tests/test_plugin.py`) have been in place since October 2026 (the engine's `spec/plans/roadmap-2026-10.md`, W3); a method states the plugin version it needs under `requires.plugins` in its `policy.yml`, which the engine checks at `lint`, `declare --check` and `init`.
