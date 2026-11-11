@@ -1030,6 +1030,39 @@ OPERATIONS["measure_intensity"] = {
 }
 
 
+# measure_if_intensity (0.10.6; the Xenium method's `if-intensity`, its delivery step): per cell,
+# the mean, minimum and maximum of one channel of an aligned immunofluorescence image over the
+# pixels inside the cell's polygon, with how much of the polygon lies on the image. The lab's
+# pyMFI calculation. The image, the matrix and which punch reads which are inputs, not
+# parameters; the channel is named per punch in the layout table.
+OPERATIONS["measure_if_intensity"] = {
+    "type": "object",
+    "properties": {
+        "min_inside": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "description": (
+                "the fraction of a cell's pixels that must lie on the image for the cell to be "
+                "measured; below it the cell has no intensity"
+            ),
+        },
+        "pixel_size_um": {
+            **_POSITIVE,
+            "description": "the Xenium pixel size the alignment matrices were made at, in microns",
+        },
+        "single_precision": {
+            "type": "boolean",
+            "description": (
+                "compute the coordinates in 32-bit floats as pyMFI did, to reproduce a pyMFI "
+                "table value for value; false for double precision"
+            ),
+        },
+    },
+    "additionalProperties": False,
+}
+
+
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)
     "qc_summary",  # one report over the QC deliverables of many regions (cross-region QC, 2026-09-18)

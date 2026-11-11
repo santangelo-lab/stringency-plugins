@@ -41,6 +41,14 @@ tool); no predicate judges it yet.
 `fields.columns` beside `fields.obs`, and the values of a text column of fifty or fewer; the
 engine's `init.column_missing` and a pipeline's names (engine 0.2.42) read that key, and saw no
 column of an h5ad before.
+
+0.10.6 (2026-11-11; 0.10.5 is the Seurat extractor's columns and the design's `primary_factor`,
+on its own branch): the Xenium method's delivery step begins. Object types `if_image` (a slide's
+immunofluorescence image, TIFF or OME-TIFF; the extractor reads its axes, channel names, shape
+and pixel size, never its pixels) and `alignment_matrix` (the 3 by 3 matrix a person made to
+align it to the Xenium run; its form, scale and rotation), both declared inputs, and the
+operation `measure_if_intensity` for the method's `if-intensity` (per cell, the mean of one
+channel inside the cell's polygon, the lab's pyMFI calculation). No predicate judges it yet.
 """
 
 from __future__ import annotations
@@ -54,7 +62,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.4"
+VERSION = "0.10.6"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -131,6 +139,10 @@ OBJECT_TYPES = {
     "analysis_summary": _ot("analysis_summary", "extract_analysis_summary"),
     # 0.8.3: a person's declared lineage panels (CSV lineage, gene), an input and never a parameter
     "marker_panels": _ot("marker_panels", "extract_marker_panels"),
+    # 0.10.6: a slide's immunofluorescence image and the matrix that aligns it to the Xenium run,
+    # both declared inputs of the Xenium method's `if-intensity` (its delivery step, X6)
+    "if_image": _ot("if_image", "extract_if_image"),
+    "alignment_matrix": _ot("alignment_matrix", "extract_alignment_matrix"),
 }
 
 TOOLS = {
@@ -149,6 +161,8 @@ TOOLS = {
         "extract_batch_evidence",
         "extract_analysis_summary",
         "extract_marker_panels",
+        "extract_if_image",
+        "extract_alignment_matrix",
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
         "mix_batches",  # negative-control generator for assess-batch: removes the slide structure of a batch_evidence dir
         "shuffle_column",  # negative-control generator for the open tools (0.6.0): permutes a design column across the units of a table

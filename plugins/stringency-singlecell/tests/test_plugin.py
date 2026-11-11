@@ -53,7 +53,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.4"
+    assert p.version == "0.10.6"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -294,3 +294,20 @@ def test_vocabulary_organs() -> None:
     ct = VOCABULARY_ORGANS["cell_types_mouse@2"]
     assert ct["hepatocyte"] == ("liver",) and ct["macrophage"] == ("any",)
     assert ct["mesothelial_cell"] == ("liver", "spleen", "lung", "small_intestine")
+
+
+def test_measure_if_intensity_operation() -> None:
+    """0.10.6: the operation of the Xenium method's `if-intensity`; the image, the matrix and
+    the channel are inputs, so the parameters are only how a cell is measured."""
+    from stringency.schemas import validate
+
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    schema = p.operations["measure_if_intensity"].params_schema
+    assert set(schema["properties"]) == {"min_inside", "pixel_size_um", "single_precision"}
+    assert (
+        validate({"min_inside": 1, "pixel_size_um": 0.2125, "single_precision": False}, schema)
+        == []
+    )
+    assert validate({"min_inside": 0}, schema) and validate({"min_inside": 1.1}, schema)
+    assert validate({"channel": 2}, schema)
+    assert {"if_image", "alignment_matrix"} <= set(p.object_types)
