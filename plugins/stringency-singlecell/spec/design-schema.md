@@ -8,6 +8,7 @@ factors:
   condition:   {column: condition,   levels: ["CLP"]}          # one level: no sham arm, on record
 batch: [slide]
 replication_unit: animal
+primary_factor: timepoint_h      # optional (0.10.5): the factor the study is laid out by
 holdout: []
 source: "..."   # optional; a manual declaration says where it came from
 notes: "..."
@@ -16,7 +17,7 @@ notes: "..."
 Rules the schema enforces: `observation` is any unit name (`cell`, `nucleus`, `spot`, `bead`; `punch` for punch-level tables; 0.8.0, before it `cell` or `punch`); `sample` required; any further unit is a
 column name; every factor has a column and at least one level (a contrast-bearing factor needs
 two, which `init.contrast_undeclared` / `init.level_undeclared` catch at init); `batch` unique;
-`replication_unit` required; no unknown top-level keys. Rules the tests enforce beyond JSON
+`replication_unit` required; `primary_factor` optional, a non-empty name (0.10.5: the factor a study is laid out by, a time course's time point; a method's modules read it from the job's design and stop when it is not a key of `factors`, which JSON schema cannot say); no unknown top-level keys. Rules the tests enforce beyond JSON
 schema: `replication_unit` is one of the unit columns; the Lyons CLP file at
 `/lab/projects/Lyons_CLP/design.yml` equals the reference design in `tests/helpers.py`.
 

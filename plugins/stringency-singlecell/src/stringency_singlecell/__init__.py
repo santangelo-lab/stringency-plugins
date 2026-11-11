@@ -46,7 +46,10 @@ column of an h5ad before.
 for a Seurat object: the meta.data columns as `fields.columns` beside `fields.obs`, and the
 default assay's feature metadata columns as `fields.feature_columns`. A design column missing
 from a raw Seurat input is now refused at `init`, and a pipeline's parameter can name a column
-of a Seurat object (`text: column`), which the Xenium method's time-point factor waits on.
+of a Seurat object (`text: column`). The design schema takes an optional `primary_factor`, the
+name of the factor a study is laid out by (a time course's time point), so a method's steps
+read it from the design in place of a factor name fixed in the pipeline (the Xenium method's
+X3; the owner's choice, 2026-11-11).
 """
 
 from __future__ import annotations
