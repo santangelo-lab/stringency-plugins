@@ -16,7 +16,8 @@ from tests.helpers import DESIGN
 from tests.synthetic import area_for, write_bundle, write_layout, write_selection_export
 
 RAW = Path("/lab/raw/2026-08_xenium_lyons-clp/output-XETG00215__0076570__Liver__20260828__175931")
-PROJ = Path("/lab/projects/Lyons_CLP")
+# the first study's files moved under v1_clp_only when the second study joined them
+PROJ = Path("/lab/projects/Lyons_CLP/v1_clp_only")
 TOOLS = load_plugins(refresh=True)["stringency-singlecell"].tools
 
 PUNCHES = {
