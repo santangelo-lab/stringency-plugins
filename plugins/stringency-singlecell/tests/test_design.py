@@ -113,8 +113,9 @@ def test_plugin_surface() -> None:
     }
     for ot in p.object_types.values():
         assert ot.extractor in p.tools and p.tools[ot.extractor].script.exists()
-        # the anndata extractor is at version 2 from 0.10.4 (`fields.columns`); the rest at 1
-        version = 2 if ot.name == "anndata" else 1
+        # the anndata extractor is at version 2 from 0.10.4 and the Seurat one from 0.10.5
+        # (`fields.columns`); the rest at 1
+        version = 2 if ot.name in ("anndata", "seurat_object") else 1
         assert ot.extractor_id == f"sc.{ot.name}@{version}"
     assert p.defaults["min_cells_per_punch"] == 500
     assert set(p.predicates()) == {

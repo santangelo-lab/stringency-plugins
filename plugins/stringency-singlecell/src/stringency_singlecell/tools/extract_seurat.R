@@ -5,6 +5,10 @@
 # the `anndata` extractor prints, so every predicate stays object-agnostic:
 #   extractor, type, n_obs, n_var,
 #   fields: obs (meta.data columns: dtype, n_unique, levels for factors with <= 50 levels),
+#           columns (the same entries: the key the engine reads for an object's columns, for
+#           `init.column_missing` and a pipeline's names; version 2, plugin 0.10.5, as the
+#           anndata extractor writes it from 0.10.4; `obs` stays for this plugin's predicates),
+#           feature_columns (the default assay's feature metadata columns: dtype, n_unique),
 #           obsm (reductions, plus "spatial" when any FOV carries coordinates),
 #           layers (the default assay's layer names), uns_flags (from obj@misc$stringency,
 #           the R twin of the anndata `uns` flags: normalisation, hvg, pca, neighbors, clustering,
@@ -30,6 +34,15 @@ for (col in colnames(md)) {
   if (is.factor(s) && nlevels(s) <= 50) entry$levels <- as.list(levels(s))
   if (is.character(s) && entry$n_unique <= 50) entry$levels <- as.list(sort(unique(s)))
   fields_obs[[col]] <- entry
+}
+# the default assay's feature table (Assay5 keeps it in @meta.data, Assay in @meta.features);
+# an assay with none gives an empty object, not an empty array
+empty_object <- setNames(list(), character())
+if (length(fields_obs) == 0) fields_obs <- empty_object
+fmeta <- tryCatch(obj[[assay]][[]], error = function(e) data.frame())
+feature_columns <- empty_object
+for (col in colnames(fmeta)) {
+  feature_columns[[col]] <- list(dtype = class(fmeta[[col]])[1], n_unique = length(unique(fmeta[[col]])))
 }
 obsm <- names(obj@reductions)
 if (length(obj@images) > 0) obsm <- c(obsm, "spatial")
@@ -81,9 +94,10 @@ if (!is.null(lab$column) && lab$column %in% colnames(md)) {
 if (!is.null(flags[["spatial_graph"]])) domain$spatial_graph <- flags[["spatial_graph"]]
 if (!is.null(flags[["exclusions"]])) domain$exclusions <- flags[["exclusions"]]
 env <- list(
-  extractor = "sc.seurat_object@1", type = "seurat_object",
+  extractor = "sc.seurat_object@2", type = "seurat_object",
   n_obs = ncol(obj), n_var = nrow(obj),
-  fields = list(obs = fields_obs, obsm = as.list(obsm), layers = as.list(layers), uns_flags = flags),
+  fields = list(obs = fields_obs, columns = fields_obs, feature_columns = feature_columns,
+                obsm = as.list(obsm), layers = as.list(layers), uns_flags = flags),
   counts_per_group = cpg,
   domain = domain
 )
