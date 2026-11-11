@@ -11,8 +11,11 @@ Version 2 (plugin 0.10.4): the obs columns are also written as `fields.columns`,
 engine reads for an object's columns (`init.column_missing`; a pipeline's names, engine
 0.2.42), and a text column of fifty values or fewer lists its values as a categorical does.
 `fields.obs` stays, since the plugin's own predicates read it. The var columns are written
-as `fields.feature_columns` (dtype and n_unique each), which a name of kind `feature_column`
-is checked against (a gene-symbol column).
+as `fields.feature_columns` (dtype and n_unique each).
+
+The lists a pipeline may name with `text: {listed_in: <key>}` (engine 0.2.42: the value must
+be an entry of `fields.<key>`): `feature_columns` (a gene-symbol column), `layers` (a counts
+layer), `obsm` (an embedding). `columns` is the engine's own, written `text: column`.
 """
 
 from __future__ import annotations
