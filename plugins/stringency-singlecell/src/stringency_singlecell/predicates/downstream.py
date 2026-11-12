@@ -20,7 +20,10 @@ from stringency.predicates import Disposition, GateContext, Verdict, predicate
 
 from stringency_singlecell.predicates._common import SOURCE, band
 
-DE_OPS = ["test_differential_expression", "compose_cells"]
+# 0.10.8: test_delivery, the Xenium method's test of the delivered fraction between levels; its
+# parameters carry the same names (factor, replicate_unit, block, min_cells_per_sample), the
+# operation is new, so no earlier verdict changes and the versions stay
+DE_OPS = ["test_differential_expression", "compose_cells", "test_delivery"]
 FINER_NAMES = {"cell", "cells", "observation", "punch", "punch_id", "sample", "spot", "nucleus"}
 
 

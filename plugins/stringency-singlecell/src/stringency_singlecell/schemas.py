@@ -1037,6 +1037,175 @@ OPERATIONS["measure_intensity"] = {
 }
 
 
+# measure_if_intensity (0.10.8; the Xenium method's `if-intensity`, its delivery step): per cell,
+# the mean, minimum and maximum of one channel of an aligned immunofluorescence image over the
+# pixels inside the cell's polygon, with how much of the polygon lies on the image. The lab's
+# pyMFI calculation. The image, the matrix and which punch reads which are inputs, not
+# parameters; the channel is named per punch in the layout table.
+OPERATIONS["measure_if_intensity"] = {
+    "type": "object",
+    "properties": {
+        "min_inside": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "description": (
+                "the fraction of a cell's pixels that must lie on the image for the cell to be "
+                "measured; below it the cell has no intensity"
+            ),
+        },
+        "pixel_size_um": {
+            **_POSITIVE,
+            "description": "the Xenium pixel size the alignment matrices were made at, in microns",
+        },
+        "single_precision": {
+            "type": "boolean",
+            "description": (
+                "compute the coordinates in 32-bit floats as pyMFI did, to reproduce a pyMFI "
+                "table value for value; false for double precision"
+            ),
+        },
+    },
+    "additionalProperties": False,
+}
+
+
+# call_delivered (0.10.8; the Xenium method's `call-delivered`): per cell, delivered or not by
+# the protein readout (the image intensity at or above a percentile of the control cells of the
+# same slide and tissue, with a ladder of fallback controls) and by each transcript probe (its
+# count at or above a floor the project states in an input table, never a default).
+OPERATIONS["call_delivered"] = {
+    "type": "object",
+    "properties": {
+        "factor": {
+            "type": "string",
+            "description": "the design factor (a column of the cells) one of whose levels is the control",
+        },
+        "reference": {
+            "type": "string",
+            "description": "the level of `factor` that is the control: cells that received no cargo",
+        },
+        "percentile": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "description": (
+                "the quantile of the control cells' intensity above which a cell is called "
+                "delivered (the lab's 0.95)"
+            ),
+        },
+        "min_control_cells": {
+            **_INT,
+            "description": "a control with fewer measured cells gives no threshold",
+        },
+    },
+    "additionalProperties": False,
+}
+
+
+# summarize_delivery (0.10.8; the Xenium method's `summarize-delivery`): the delivered fraction of
+# every replicate, punch, cell type and tissue domain, each over the cells that could be called
+# (an unmeasured or uncalled cell is never "not delivered"), and the agreement of the protein
+# readout with each transcript probe (Cohen's kappa) over a range of count floors. The replicate
+# unit is the design's; the probes are the ones the calls carry.
+_FLOORS_PATTERN = r"^\s*[0-9]+(\.[0-9]+)?(\s*,\s*[0-9]+(\.[0-9]+)?)*\s*$"
+OPERATIONS["summarize_delivery"] = {
+    "type": "object",
+    "properties": {
+        "factor": {
+            "type": "string",
+            "description": (
+                "the design factor whose level each replicate and group row carries, and over "
+                "whose levels the means are written"
+            ),
+        },
+        "kappa_floors": {
+            "type": "string",
+            "pattern": _FLOORS_PATTERN,
+            "description": (
+                "comma-separated probe count floors at which the protein call is compared with "
+                "each probe (one row of counts and Cohen's kappa per floor)"
+            ),
+        },
+        "min_cells": {
+            "type": "integer",
+            "minimum": 1,
+            "description": (
+                "a replicate enters a level's mean fraction only with at least this many called "
+                "cells of the group"
+            ),
+        },
+    },
+    "additionalProperties": False,
+}
+
+
+# test_delivery (0.10.8; the Xenium method's `test-delivery`): whether the delivered fraction
+# differs between levels of a design factor, within each cell type or domain, on per-replicate
+# fractions over the called cells; the tests are those `compose_cells` carries that apply to a
+# fraction with its own denominator (propeller, edgeR quasi-likelihood with the called cells as
+# offset, a label permutation), with the replicate unit, the block and the floors stated.
+_DELIVERY_TESTS = "(propeller|edger_ql|permutation)"
+OPERATIONS["test_delivery"] = {
+    "type": "object",
+    "properties": {
+        "factor": {"type": "string", "description": "the design factor whose levels are compared"},
+        "reference": {
+            "type": "string",
+            "description": "the factor level the others are tested against",
+        },
+        "replicate_unit": {
+            "type": "string",
+            "description": (
+                "what counts as one replicate: a unit of the design (animal) or the punch "
+                "(pseudoreplication, which de.replication_unit judges)"
+            ),
+        },
+        "transform": {
+            "type": "string",
+            "enum": ["logit", "asin"],
+            "description": "the transform of the delivered fraction before the propeller t-test",
+        },
+        "tests": {
+            "type": "string",
+            "pattern": f"^{_DELIVERY_TESTS}(,{_DELIVERY_TESTS})*$",
+            "description": (
+                "comma-separated tests to run (propeller, edger_ql, permutation); effect sizes "
+                "with bootstrap intervals are always written"
+            ),
+        },
+        "min_cells_per_sample": {
+            "type": "integer",
+            "minimum": 0,
+            "description": (
+                "a replicate enters a group's test only with at least this many called cells of "
+                "the group (the lab's 100)"
+            ),
+        },
+        "min_punches_per_arm": {
+            "type": "integer",
+            "minimum": 1,
+            "description": (
+                "a contrast is tested in a group only when each side has at least this many "
+                "punches among its entering replicates (the lab's 2)"
+            ),
+        },
+        "seed": {**_INT, "description": "seed of the bootstrap and permutation draws"},
+        "group_by": {
+            "type": "string",
+            "pattern": _OPTIONAL_COLUMN,
+            "description": (
+                "the cell-table column whose levels are the rows (cell_type, domain, cluster); "
+                "empty for one row of every cell"
+            ),
+        },
+        "subset": dict(_LAYER_PARAMS["subset"]),
+        "block": dict(_LAYER_PARAMS["block"]),
+    },
+    "additionalProperties": False,
+}
+
+
 OBJECTIVE_QUESTIONS: tuple[str, ...] = (
     "processed_object",  # deliver QC'd per-punch objects with sidecars (option 1, objectives note)
     "qc_summary",  # one report over the QC deliverables of many regions (cross-region QC, 2026-09-18)

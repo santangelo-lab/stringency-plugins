@@ -11,10 +11,11 @@ def test_plugin_loads() -> None:
         and "differential_expression" in p.objective_questions
     )
     assert (
-        len(p.predicates()) == 26
+        len(p.predicates()) == 28
     )  # 0.2.0 adds sc.export_mismatch; 0.3.0 the four upstream ones; 0.4.0 sc.batch_route_review;
     # 0.8.5 sc.fine_label_uncited; 0.8.6 sc.louvain_too_large; 0.9.0 spatial.domain_is_replicate;
-    # 0.10.0 sc.label_outside_organ
+    # 0.10.0 sc.label_outside_organ; 0.10.8 sc.threshold_from_fallback_control and
+    # sc.delivery_test_on_threshold_level
     assert (
         "cell_types_mouse@1" in p.vocabularies and "unknown" in p.vocabularies["cell_types_mouse@1"]
     )
@@ -53,7 +54,7 @@ def test_open_tools_second_round_operations() -> None:
     """0.9.0 (the Xenium method's open-tools-v2-plan.md section 10): the layer parameters on the
     five open tools, the per-tool additions, the two domain operations and the generator."""
     p = load_plugins(refresh=True)["stringency-singlecell"]
-    assert p.version == "0.10.7"
+    assert p.version == "0.10.8"
     layers = {
         "compose_cells": {"group_by", "subset", "denominator", "stratify_by", "block"},
         "plot_composition": {"group_by", "subset", "denominator", "stratify_by"},
@@ -327,3 +328,54 @@ def test_vocabularies_of_seven_more_organs() -> None:
             assert set(organs) <= set(s2[label]), label
     assert s2["villus"] == ("small_intestine",) and s2["surface_epithelium"] == ("large_intestine",)
     assert set(s2["vascular"]) == set(ORGANS) and s2["glomerulus"] == ("kidney",)
+
+
+def test_measure_if_intensity_operation() -> None:
+    """0.10.8: the operation of the Xenium method's `if-intensity`; the image, the matrix and
+    the channel are inputs, so the parameters are only how a cell is measured."""
+    from stringency.schemas import validate
+
+    p = load_plugins(refresh=True)["stringency-singlecell"]
+    schema = p.operations["measure_if_intensity"].params_schema
+    assert set(schema["properties"]) == {"min_inside", "pixel_size_um", "single_precision"}
+    assert (
+        validate({"min_inside": 1, "pixel_size_um": 0.2125, "single_precision": False}, schema)
+        == []
+    )
+    assert validate({"min_inside": 0}, schema) and validate({"min_inside": 1.1}, schema)
+    assert validate({"channel": 2}, schema)
+    assert {"if_image", "alignment_matrix"} <= set(p.object_types)
+
+
+def test_delivery_summary_and_test_operations() -> None:
+    """0.10.8: the operations of the Xenium method's `summarize-delivery` and `test-delivery`.
+    The summary's floors are a list of numbers; the test carries the tests of `compose_cells`
+    that apply to a fraction with its own denominator, and the lab's floors as parameters."""
+    from stringency.schemas import validate
+
+    ops = load_plugins(refresh=True)["stringency-singlecell"].operations
+    summary = ops["summarize_delivery"].params_schema
+    assert set(summary["properties"]) == {"factor", "kappa_floors", "min_cells"}
+    assert (
+        validate({"factor": "condition", "kappa_floors": "1,2,4,8", "min_cells": 100}, summary)
+        == []
+    )
+    assert validate({"kappa_floors": "1, 2.5"}, summary) == []
+    assert validate({"kappa_floors": "one,two"}, summary) and validate({"min_cells": 0}, summary)
+    test = ops["test_delivery"].params_schema
+    assert {
+        "factor", "reference", "replicate_unit", "transform", "tests", "min_cells_per_sample",
+        "min_punches_per_arm", "seed", "group_by", "subset", "block",
+    } == set(test["properties"])  # fmt: skip
+    good = {
+        "factor": "condition", "reference": "low", "replicate_unit": "animal",
+        "tests": "propeller,edger_ql,permutation", "min_cells_per_sample": 100,
+        "min_punches_per_arm": 2, "group_by": "cell_type", "subset": "condition in low,high",
+        "block": "batch",
+    }  # fmt: skip
+    assert validate(good, test) == []
+    assert validate({"group_by": ""}, test) == []  # one row of every cell
+    assert validate({"tests": "edger_density"}, test)  # an area is no offset for a fraction
+    assert validate({"min_punches_per_arm": 0}, test) and validate({"colour": "red"}, test)
+    for op in ("summarize_delivery", "test_delivery"):
+        assert ops[op].params_schema.get("additionalProperties") is False, op

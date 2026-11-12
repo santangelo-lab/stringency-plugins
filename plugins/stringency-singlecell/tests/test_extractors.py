@@ -893,3 +893,50 @@ def test_shuffle_coordinates_h5ad(tmp_path: Path) -> None:
             5.0,
         ]
         assert (f["obs"]["x"][()] == sp[:, 0]).all()
+
+
+def test_extract_alignment_matrix(tmp_path: Path, design_json: Path) -> None:
+    """0.10.8: the form of a hand-made alignment matrix and what it says, never whether it is
+    right. The numbers are the form of the lab's matrices: a half turn and a scale of 2.34."""
+    f = tmp_path / "matrix.csv"
+    f.write_text("-2.3361,0.01158,49847.96\n-0.01158,-2.3361,54773.15\n0,0,1\n")
+    out = run_tool("extract_alignment_matrix", f, design_json)
+    assert out["extractor"] == "sc.alignment_matrix@1" and out["type"] == "alignment_matrix"
+    d = out["domain"]
+    assert d["well_formed"] is True and d["problems"] == []
+    assert abs(d["scale"] - 2.3361) < 1e-3 and abs(abs(d["rotation_deg"]) - 180) < 1
+    assert d["translation"] == [49847.96, 54773.15]
+    for text, why in [
+        ("1,0,0\n0,1,0\n", "not 3 by 3"),
+        ("1,0,0\n0,1,0\n0,0,2\n", "last row"),
+        ("1,2,0\n2,4,0\n0,0,1\n", "cannot be inverted"),
+        ("a,0,0\n0,1,0\n0,0,1\n", "not a number"),
+    ]:
+        f.write_text(text)
+        d = run_tool("extract_alignment_matrix", f, design_json)["domain"]
+        assert d["well_formed"] is False and any(why in p for p in d["problems"]), (text, d)
+
+
+def test_extract_if_image(tmp_path: Path, design_json: Path) -> None:
+    """0.10.8: an image's metadata, read without its pixels: the channel names a step's channel
+    is one of, the axes, and whether it is one plane."""
+    np = pytest.importorskip("numpy")
+    tifffile = pytest.importorskip("tifffile")
+    planes = np.zeros((3, 30, 40), dtype=np.uint8)
+    f = tmp_path / "slide.ome.tif"
+    tifffile.imwrite(
+        f,
+        planes,
+        metadata={"axes": "CYX", "Channel": {"Name": ["DAPI", "FITC", "Cy5"]},
+                  "PhysicalSizeX": 0.5, "PhysicalSizeY": 0.5},
+    )  # fmt: skip
+    out = run_tool("extract_if_image", f, design_json)
+    assert out["extractor"] == "sc.if_image@1" and out["type"] == "if_image"
+    assert out["n_obs"] == 1200 and out["n_var"] == 3
+    assert out["fields"]["channels"] == ["DAPI", "FITC", "Cy5"]
+    d = out["domain"]
+    assert d["axes"] == "CYX" and d["shape"] == [3, 30, 40] and d["dtype"] == "uint8"
+    assert d["single_plane"] is True and d["pixel_size_um"] == 0.5
+    g = tmp_path / "stack.ome.tif"
+    tifffile.imwrite(g, np.zeros((2, 3, 30, 40), dtype=np.uint8), metadata={"axes": "ZCYX"})
+    assert run_tool("extract_if_image", g, design_json)["domain"]["single_plane"] is False

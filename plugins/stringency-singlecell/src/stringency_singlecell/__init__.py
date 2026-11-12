@@ -51,7 +51,7 @@ name of the factor a study is laid out by (a time course's time point), so a met
 read it from the design in place of a factor name fixed in the pipeline (the Xenium method's
 X3; the owner's choice, 2026-11-11).
 
-0.10.7 (2026-11-11; 0.10.6 is the delivery step's types and operations, on its own branch): the
+0.10.7 (2026-11-11): the
 vocabularies of seven more organs for the Xenium method. `cell_types_mouse@3` is @2 with 38
 labels the owner approved organ by organ for kidney, skin, heart, lymph node, large intestine,
 the female reproductive tract and brain (names from established references: CELLxGENE,
@@ -60,6 +60,28 @@ CellGuide, the Cell Ontology), and organs added to seventeen labels @2 had.
 large intestine, and large_intestine out of `villus`. Both are written by the method's
 `tools/build_vocabulary_tables.py` from its tables. `ORGANS` gains `lymph_node` and
 `female_reproductive_tract`, read also as `ln` and `frt`. The older versions are unchanged.
+
+0.10.8 (2026-11-11): the Xenium method's delivery step begins. Object types `if_image` (a slide's
+immunofluorescence image, TIFF or OME-TIFF; the extractor reads its axes, channel names, shape
+and pixel size, never its pixels) and `alignment_matrix` (the 3 by 3 matrix a person made to
+align it to the Xenium run; its form, scale and rotation), both declared inputs, and the
+operation `measure_if_intensity` for the method's `if-intensity` (per cell, the mean of one
+channel inside the cell's polygon, the lab's pyMFI calculation). The operation `call_delivered`
+for the method's `call-delivered` (a cell delivered by the image intensity against a percentile
+of its control, and by each transcript probe against a stated floor), and
+`sc.threshold_from_fallback_control` (flag, post): a threshold taken from a control that is not
+the group's own slide and tissue, read from the flat facts the module writes (the
+`analysis_summary` extractor drops lists). `sc.delivery_test_on_threshold_level` (flag, post): a
+test of the delivered fraction that compares the level whose cells set the thresholds. The operation `summarize_delivery` for the method's
+`summarize-delivery` (the delivered fraction per replicate, punch, cell type and domain, each over
+the cells that could be called, and protein against each probe as Cohen's kappa over count
+floors), and `test_delivery` for its `test-delivery` (the fraction between levels of a factor
+within each group, with the tests of `compose_cells` that apply to a fraction: propeller, edgeR
+quasi-likelihood with the called cells as offset, a label permutation). `test_delivery` joins the
+scope of `de.replication_unit`, `de.covariate_omission`, `de.selection_bias`,
+`test.multiple_comparison` and `test.assumptions_unchecked`; the operation is new, so no earlier
+verdict changes and their versions stay. The plain types `delivery_calls`, `delivery_cells`
+and `delivery_fractions` are in `spec/object-types.md`.
 """
 
 from __future__ import annotations
@@ -73,7 +95,7 @@ from stringency_singlecell import phrasing
 from stringency_singlecell.schemas import DEFAULTS, DESIGN_SCHEMA, OBJECTIVE_QUESTIONS, OPERATIONS
 
 NAME = "stringency-singlecell"
-VERSION = "0.10.7"
+VERSION = "0.10.8"
 _HERE = Path(__file__).parent
 _TOOLS = _HERE / "tools"
 
@@ -152,6 +174,10 @@ OBJECT_TYPES = {
     "analysis_summary": _ot("analysis_summary", "extract_analysis_summary"),
     # 0.8.3: a person's declared lineage panels (CSV lineage, gene), an input and never a parameter
     "marker_panels": _ot("marker_panels", "extract_marker_panels"),
+    # 0.10.8: a slide's immunofluorescence image and the matrix that aligns it to the Xenium run,
+    # both declared inputs of the Xenium method's `if-intensity` (its delivery step, X6)
+    "if_image": _ot("if_image", "extract_if_image"),
+    "alignment_matrix": _ot("alignment_matrix", "extract_alignment_matrix"),
 }
 
 TOOLS = {
@@ -170,6 +196,8 @@ TOOLS = {
         "extract_batch_evidence",
         "extract_analysis_summary",
         "extract_marker_panels",
+        "extract_if_image",
+        "extract_alignment_matrix",
         "shuffle_markers",  # negative-control generator for annotate-clusters: permutes gene symbols in a cluster_evidence dir
         "mix_batches",  # negative-control generator for assess-batch: removes the slide structure of a batch_evidence dir
         "shuffle_column",  # negative-control generator for the open tools (0.6.0): permutes a design column across the units of a table

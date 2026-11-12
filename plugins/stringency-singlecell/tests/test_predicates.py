@@ -191,6 +191,28 @@ def _domains(
     return ctx("call_domains", objs, phase="post", ranges=ranges, act=act)
 
 
+def _delivery(groups: list | None = None) -> GateContext:
+    """A call_delivered step after it ran: its `delivery_facts` analysis_summary in the state."""
+    objs = _summary(threshold_groups=groups) if groups is not None else {}
+    return ctx("call_delivered", objs, phase="post", act=action("call_delivered", percentile=0.95))
+
+
+def _test_facts(n: int, contrasts: str) -> GateContext:
+    """A test_delivery step after it ran: its `test_facts` analysis_summary in the state."""
+    facts = {
+        "n_contrasts_with_threshold_level": n,
+        "contrasts_with_threshold_level": contrasts,
+        "threshold_levels": "control (100% of its called cells set the thresholds)" if n else "",
+    }
+    return ctx("test_delivery", _summary(**facts), phase="post", act=action("test_delivery"))
+
+
+_OWN = {"slide": "S1", "tissue": "liver", "rung": "same_slide_same_tissue",
+        "control_punches": "C-LI", "n_control_cells": 22000}  # fmt: skip
+_BORROWED = {"slide": "S2", "tissue": "liver", "rung": "same_tissue_other_slides",
+             "control_punches": "C-LI", "n_control_cells": 22000}  # fmt: skip
+
+
 def _organ(
     *labels: str | None,
     organ: str | None = "gut",
@@ -229,6 +251,18 @@ def _organ(
 CASES: list[tuple[str, CtxFn, CtxFn]] = [
     # vocabularies scoped by organ (plugin 0.10.0): a liver structure in a gut project
     ("sc.label_outside_organ", lambda: _organ("crypt", "periportal"), lambda: _organ("crypt")),
+    # the delivery step (plugin 0.10.8): a threshold from a control that is not the group's own
+    (
+        "sc.threshold_from_fallback_control",
+        lambda: _delivery([_OWN, _BORROWED]),
+        lambda: _delivery([_OWN]),
+    ),
+    # a delivery test that compares the level whose cells set the thresholds (plugin 0.10.8)
+    (
+        "sc.delivery_test_on_threshold_level",
+        lambda: _test_facts(1, "control_vs_low"),
+        lambda: _test_facts(0, ""),
+    ),
     # the spatial domain calls (plugin 0.9.0)
     (
         "spatial.domain_is_replicate",
@@ -1544,3 +1578,102 @@ def test_no_permutation_null_coordinate_floor() -> None:
     assert _run(pid, ctx("test_spatial_autocorrelation", {}, n_perms=199, **moran)) is False
     v = registry.get(pid).fn(_nhood(n_perms=10))  # type: ignore[union-attr]
     assert v.fired and "enrichment null" in v.reason and v.evidence["floor"] == 100
+
+
+def test_threshold_from_fallback_control_names_the_groups() -> None:
+    pid = "sc.threshold_from_fallback_control"
+    spec = registry.get(pid)
+    assert spec is not None and spec.version == 1 and str(spec.default).lower().endswith("flag")
+    assert spec.covers_param("call_delivered", "percentile") and spec.in_phase("post")
+    other = {"slide": "S3", "tissue": "lung", "rung": "same_slide_other_tissue",
+             "control_punches": "C-KI", "n_control_cells": 900}  # fmt: skip
+    none = {"slide": "S4", "tissue": "skin", "rung": "none", "control_punches": "",
+            "n_control_cells": 0}  # fmt: skip
+    v = spec.fn(_delivery([_OWN, _BORROWED, other, none]))
+    assert v.fired and "2 of 4 slide-and-tissue group(s)" in (v.reason or "")
+    assert "liver on slide S2 from same_tissue_other_slides (C-LI)" in (v.reason or "")
+    assert [g["rung"] for g in v.evidence["fallback"]] == [
+        "same_tissue_other_slides",
+        "same_slide_other_tissue",
+    ]
+    assert v.evidence["without_control"] == [{"slide": "S4", "tissue": "skin"}]
+    # a group with no control at all is uncalled and listed; by itself it does not fire
+    v = spec.fn(_delivery([_OWN, none]))
+    assert not v.fired and v.evidence["without_control"] == [{"slide": "S4", "tissue": "skin"}]
+    for c in (_delivery(None), _delivery("x")):  # type: ignore[arg-type]
+        v = spec.fn(c)
+        assert not v.fired and v.evidence["judged"] is False
+
+
+def test_the_downstream_predicates_judge_the_delivery_test() -> None:
+    """0.10.8: `test_delivery` (the Xenium method's test of the delivered fraction between
+    levels) is in the downstream predicates' scope, under the same parameter names."""
+    for pid in ("de.replication_unit", "de.covariate_omission", "test.assumptions_unchecked"):
+        spec = registry.get(pid)
+        assert spec is not None and "test_delivery" in spec.scope, pid
+    assert _run("de.replication_unit", _de(operation="test_delivery", replicate_unit="punch"))
+    assert not _run("de.replication_unit", _de(operation="test_delivery", replicate_unit="animal"))
+    assert _run(
+        "test.assumptions_unchecked", _de(operation="test_delivery", min_cells_per_sample=0)
+    )
+    assert not _run(
+        "de.covariate_omission", _de(operation="test_delivery", block="batch")
+    )  # the declared batch, resolved by the tool
+
+
+def test_threshold_from_fallback_control_reads_the_flat_facts() -> None:
+    """Under the engine the analysis_summary extractor keeps only numbers, text and booleans, so
+    the predicate reads the flat facts `call-delivered` writes beside the list (found by the
+    Xenium method's first engine run of xenium-delivery: the list never reached the state)."""
+    from stringency_singlecell.tools.extract_analysis_summary import main as extract
+
+    spec = registry.get("sc.threshold_from_fallback_control")
+    assert spec is not None
+    flat = {
+        "n_groups": 3,
+        "n_groups_fallback": 1,
+        "groups_fallback": "liver on slide S3 from same_tissue_other_slides (c1;c2, 1352 cells)",
+        "n_groups_without_control": 0,
+        "groups_without_control": "",
+    }
+    v = spec.fn(_summary_ctx(flat))
+    assert v.fired and "1 of 3 slide-and-tissue group(s)" in (v.reason or "")
+    assert "liver on slide S3" in (v.reason or "") and v.evidence["n_fallback"] == 1
+    v = spec.fn(_summary_ctx({**flat, "n_groups_fallback": 0, "groups_fallback": ""}))
+    assert not v.fired and v.evidence["n_groups"] == 3
+    v = spec.fn(_summary_ctx({**flat, "n_groups_fallback": "many"}))
+    assert not v.fired and v.evidence["judged"] is False
+    # the extractor keeps the flat facts and drops the list, which is why both are written
+    import io
+    import json
+    import tempfile
+    from contextlib import redirect_stdout
+
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        json.dump({**flat, "threshold_groups": [{"slide": "S3"}]}, fh)
+    out = io.StringIO()
+    with redirect_stdout(out):
+        assert extract(["x", fh.name, "{}"]) == 0
+    domain = json.loads(out.getvalue())["domain"]
+    assert domain["n_groups_fallback"] == 1 and "threshold_groups" not in domain
+
+
+def _summary_ctx(facts: dict) -> GateContext:
+    """A call_delivered step after it ran, its delivery_facts as the extractor leaves them."""
+    return ctx(
+        "call_delivered",
+        _summary(**facts),
+        phase="post",
+        act=action("call_delivered", percentile=0.95),
+    )
+
+
+def test_delivery_test_on_threshold_level_names_the_contrasts() -> None:
+    spec = registry.get("sc.delivery_test_on_threshold_level")
+    assert spec is not None and str(spec.default).lower().endswith("flag")
+    assert spec.in_phase("post") and spec.covers_param("test_delivery", "reference")
+    v = spec.fn(_test_facts(2, "control_vs_low, high_vs_control"))
+    assert v.fired and "2 contrast(s)" in (v.reason or "") and "control_vs_low" in (v.reason or "")
+    assert not spec.fn(_test_facts(0, "")).fired
+    v = spec.fn(ctx("test_delivery", {}, phase="post", act=action("test_delivery")))
+    assert not v.fired and v.evidence["judged"] is False
